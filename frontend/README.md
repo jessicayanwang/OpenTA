@@ -21,6 +21,7 @@ npm run dev
 - Source citations displayed for each answer
 - Confidence scores for transparency
 - Sample questions to get started
+- Study Plan Generator at `/study-plan` for personalized plans
 
 ## Tech Stack
 

@@ -1,0 +1,41 @@
+## CS50: Introduction to Computer Science - Fall 2024
+
+COURSE INFORMATION
+Instructor: David J. Malan
+Lectures: Monday and Wednesday, 1:00 PM - 2:30 PM
+Office Hours: Tuesday and Thursday, 3:00 PM - 5:00 PM
+
+## GRADING POLICY
+Your final grade is calculated as follows:
+- Problem Sets: 50%
+- Final Project: 30%
+- Quizzes: 20%
+
+All work must be submitted by the specified deadlines to receive credit.
+
+## LATE POLICY
+Each student has 3 late days to use throughout the semester. A late day allows you to submit an assignment up to 24 hours late without penalty. You may use multiple late days on a single assignment.
+
+After exhausting your late days, late submissions will receive a 10% penalty per day, up to 3 days. Assignments more than 3 days late will not be accepted.
+
+## ASSIGNMENT SCHEDULE
+- Problem Set 1: Due September 15, 2024 at 11:59 PM
+- Problem Set 2: Due September 29, 2024 at 11:59 PM
+- Problem Set 3: Due October 13, 2024 at 11:59 PM
+- Midterm Quiz: October 20, 2024
+- Problem Set 4: Due November 3, 2024 at 11:59 PM
+- Problem Set 5: Due November 17, 2024 at 11:59 PM
+- Final Project: Due December 8, 2024 at 11:59 PM
+
+## COLLABORATION POLICY
+You may discuss problem sets with classmates, but you must write your own code. Copying code from others or online sources is prohibited and will result in academic integrity violations.
+
+You may use AI tools like ChatGPT for learning, but not for generating solutions to graded assignments.
+
+## OFFICE HOURS AND SUPPORT
+Office hours are available in-person and virtually. Check the course website for the weekly schedule and Zoom links.
+
+For quick questions, use the course Ed Discussion forum. Course staff typically respond within 24 hours.
+
+## ACADEMIC INTEGRITY
+All work submitted must be your own. Violations of the academic integrity policy will be reported to the Honor Council and may result in failing the course.

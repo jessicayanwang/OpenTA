@@ -1,0 +1,64 @@
+## Problem Set 1: Introduction to C
+
+## DUE DATE
+September 15, 2024 at 11:59 PM EST
+
+## OVERVIEW
+This problem set will introduce you to programming in C. You'll implement several programs that demonstrate basic programming concepts.
+
+## GETTING STARTED
+1. Log into CS50 IDE
+2. Run `update50` to update your IDE
+3. Create a directory called `pset1`
+4. Navigate to that directory
+
+## PROBLEM 1: HELLO
+Implement a program that prints "Hello, World!" to the screen.
+
+Requirements:
+- File name: hello.c
+- Must compile without errors
+- Output must match exactly: "Hello, World!\n"
+
+## PROBLEM 2: MARIO
+Implement a program that prints a half-pyramid of a specified height using hashes (#).
+
+Requirements:
+- Prompt user for height (between 1 and 8, inclusive)
+- If invalid input, re-prompt
+- Print right-aligned pyramid
+
+Example output for height 4:
+   #
+  ##
+ ###
+####
+
+## PROBLEM 3: CREDIT
+Implement a program that determines whether a credit card number is valid using Luhn's algorithm.
+
+Requirements:
+- Prompt user for credit card number
+- Validate using Luhn's algorithm
+- Identify card type: AMEX, MASTERCARD, VISA, or INVALID
+- Print the card type
+
+## SUBMISSION
+Submit your code via `submit50 cs50/problems/2024/x/pset1`
+
+Make sure all programs compile and run correctly before submitting. Test with the provided check50 tool.
+
+## GRADING RUBRIC
+Each problem is worth equal points:
+- Correctness: 70%
+- Design: 20%
+- Style: 10%
+
+## GETTING HELP
+If you're stuck:
+1. Review lecture notes and shorts
+2. Post on Ed Discussion (no code sharing!)
+3. Attend office hours
+4. Use the debugger to step through your code
+
+Remember: The goal is to learn, not just to complete the assignment. Take your time and understand each concept.

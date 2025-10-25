@@ -42,7 +42,7 @@ export default function Home() {
     if (!input.trim()) return
 
     const userMessage: Message = { role: 'user', content: input }
-    setMessages(prev => [...prev, userMessage])
+    setMessages((prev: Message[]) => [...prev, userMessage])
     setInput('')
     setLoading(true)
 
@@ -75,14 +75,14 @@ export default function Home() {
         suggestedQuestions
       }
 
-      setMessages(prev => [...prev, assistantMessage])
+      setMessages((prev: Message[]) => [...prev, assistantMessage])
     } catch (error) {
       console.error('Error:', error)
       const errorMessage: Message = {
         role: 'assistant',
         content: 'Sorry, I encountered an error. Please make sure the backend is running.',
       }
-      setMessages(prev => [...prev, errorMessage])
+      setMessages((prev: Message[]) => [...prev, errorMessage])
     } finally {
       setLoading(false)
     }
@@ -142,6 +142,14 @@ export default function Home() {
           <p className="text-gray-600">
             Your AI Teaching Assistant - Ask questions about CS50 and get answers with citations
           </p>
+          <div className="mt-4">
+            <a
+              href="/study-plan"
+              className="inline-block px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition font-semibold"
+            >
+              Generate a Study Plan →
+            </a>
+          </div>
         </div>
 
         {/* Chat Container */}

@@ -5,10 +5,11 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
 
-from models import ChatRequest, ChatResponse
+from models import ChatRequest, ChatResponse, StudyPlanRequest, StudyPlanResponse
 from document_store import DocumentStore
 from retrieval import HybridRetriever
 from qa_agent import QAAgent
+from study_plan_agent import StudyPlanAgent
 
 app = FastAPI(title="OpenTA API", version="0.1.0")
 
@@ -25,11 +26,12 @@ app.add_middleware(
 document_store = DocumentStore()
 retriever = None
 qa_agent = None
+study_plan_agent = None
 
 @app.on_event("startup")
 async def startup_event():
     """Initialize the system on startup"""
-    global retriever, qa_agent
+    global retriever, qa_agent, study_plan_agent
     
     print("🚀 Starting OpenTA...")
     
@@ -51,6 +53,8 @@ async def startup_event():
     
     # Initialize QA agent (no API key needed)
     qa_agent = QAAgent()
+    # Initialize Study Plan agent
+    study_plan_agent = StudyPlanAgent()
     
     print("✅ OpenTA is ready!")
 
@@ -99,6 +103,19 @@ async def chat(request: ChatRequest):
     print(f"✅ Answer generated (confidence: {response.confidence:.2f})")
     
     return response
+
+@app.post("/api/study-plan", response_model=StudyPlanResponse)
+async def study_plan(request: StudyPlanRequest):
+    """
+    Generate a personalized study plan based on user preferences
+    """
+    if not study_plan_agent:
+        raise HTTPException(status_code=503, detail="System not initialized")
+
+    print(f"\n🗓️ Study Plan request: scope={request.goal_scope}, hours/week={request.hours_per_week}, level={request.current_level}")
+    plan = study_plan_agent.generate_plan(request)
+    print(f"✅ Study plan generated: {plan.duration_weeks} weeks, {plan.hours_per_week} hrs/week")
+    return plan
 
 if __name__ == "__main__":
     import uvicorn

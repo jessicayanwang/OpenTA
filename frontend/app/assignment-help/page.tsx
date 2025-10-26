@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 
 interface Citation {
@@ -16,6 +16,14 @@ interface AssignmentHelpResponse {
   resources: string[]
   next_steps: string[]
   citations: Citation[]
+}
+
+interface Message {
+  role: 'user' | 'assistant' | 'system'
+  content: string
+  userContext?: string
+  problemNumber?: string
+  response?: AssignmentHelpResponse
 }
 
 // Mock data for demonstration
@@ -165,58 +173,48 @@ Remember: A good algorithm is clear and handles all cases! 📝`,
       }
     ]
   },
-  'implementation': {
-    guidance: `⌨️ **Let's work on the implementation!**
+  'code_review': {
+    guidance: `👀 **Let's review your code together!**
 
-**Implementation Tips:**
+When sharing code, I can help you think through:
 
-1. **Start simple:**
-   - Get the basic structure working first
-   - Add features one at a time
-   - Test after each addition
+**Logic Review:**
+- Does your code follow the algorithm you planned?
+- Are there any logical errors in your conditions?
+- Do your loops iterate the correct number of times?
 
-2. **Syntax matters:**
-   - Check your semicolons and brackets
-   - Make sure variable types match
-   - Follow the examples from lecture
+**Common Patterns to Check:**
+- Variable initialization
+- Loop boundaries (off-by-one errors?)
+- Condition logic (&&, ||, !)
+- Return values
 
-3. **Build incrementally:**
-   - Don't try to write everything at once
-   - Compile frequently to catch errors early
-   - Test with simple inputs before complex ones
+**Questions to Consider:**
+- Have you tested with edge cases?
+- Does it work with the smallest valid input?
+- What about the largest?
+- What if input is invalid?
 
-**Questions to consider:**
-- Have you reviewed similar code from lecture?
-- Are you using the right C syntax for what you want to do?
-- Have you tested each part independently?
-
-Remember: Small steps lead to big solutions! 🪜`,
+Share your code in your next message, and let's walk through it together! 📝`,
     concepts: [
-      'C syntax and semantics',
-      'Variable types and declarations',
-      'Function structure',
-      'Incremental development'
+      'Code review techniques',
+      'Logic verification',
+      'Edge case testing',
+      'Defensive programming'
     ],
     resources: [
-      'Review lecture code examples',
-      'Check CS50 manual pages (man50)',
-      'Look at shorts on C syntax',
-      'Compile frequently with make'
+      'Use check50 to verify correctness',
+      'Run style50 for style feedback',
+      'Test with various inputs',
+      'Read through code line by line'
     ],
     next_steps: [
-      'Start with a basic skeleton that compiles',
-      'Add one feature at a time',
-      'Test with check50 after each major change',
-      'Read compiler error messages carefully'
+      'Share your code snippet',
+      'Describe what you expect it to do',
+      'Mention where you think the issue might be',
+      'We\'ll work through it together'
     ],
-    citations: [
-      {
-        source: 'cs50_assignment1.txt',
-        section: 'Getting Started',
-        text: '1. Log into CS50 IDE 2. Run update50 to update your IDE 3. Create a directory called pset1 4. Navigate to that directory',
-        relevance_score: 0.80
-      }
-    ]
+    citations: []
   }
 }
 
@@ -230,314 +228,399 @@ const HINT_SUGGESTIONS = [
   { label: '🚀 How do I start?', type: 'getting_started' },
   { label: '🐛 My code has an error', type: 'debugging' },
   { label: '💭 What algorithm should I use?', type: 'algorithm' },
-  { label: '⌨️ How do I implement this?', type: 'implementation' },
+  { label: '👀 Can you review my code?', type: 'code_review' },
 ]
 
 export default function AssignmentHelpPage() {
   const [selectedProblem, setSelectedProblem] = useState<string>('problem2')
-  const [question, setQuestion] = useState<string>('')
-  const [context, setContext] = useState<string>('')
+  const [input, setInput] = useState<string>('')
+  const [contextInput, setContextInput] = useState<string>('')
+  const [showContextBox, setShowContextBox] = useState<boolean>(false)
   const [loading, setLoading] = useState<boolean>(false)
-  const [response, setResponse] = useState<AssignmentHelpResponse | null>(null)
   const [useMockData, setUseMockData] = useState<boolean>(true)
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      role: 'system',
+      content: `👋 **Welcome to the Assignment Helper!**
 
-  const handleSubmit = async () => {
-    if (!question.trim()) return
+I'm here to guide you through your assignments using the Socratic method. I won't give you direct answers, but I'll help you:
 
+• Break down problems into manageable steps
+• Debug your code systematically  
+• Understand key concepts
+• Think through algorithms logically
+
+**You can:**
+- Ask questions about the assignment
+- Share code snippets for review (click "Add code/context" button)
+- Describe errors you're encountering
+- Request help with algorithms or concepts
+
+Let's work through this together! 🎓
+
+**Quick tip:** Select your problem from the dropdown above, then start asking questions!`,
+    }
+  ])
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
+
+  const sendMessage = async () => {
+    if (!input.trim()) return
+
+    const userMessage: Message = {
+      role: 'user',
+      content: input,
+      userContext: contextInput || undefined,
+      problemNumber: PROBLEMS.find(p => p.id === selectedProblem)?.name
+    }
+
+    setMessages(prev => [...prev, userMessage])
+    setInput('')
+    setContextInput('')
+    setShowContextBox(false)
     setLoading(true)
-    setResponse(null)
 
     try {
       if (useMockData) {
         // Use mock data for demonstration
         await new Promise(resolve => setTimeout(resolve, 1500))
         
-        const questionLower = question.toLowerCase()
+        const questionLower = input.toLowerCase()
         let mockType = 'getting_started'
         
-        if (questionLower.includes('error') || questionLower.includes('bug') || questionLower.includes('wrong')) {
+        if (questionLower.includes('error') || questionLower.includes('bug') || questionLower.includes('wrong') || questionLower.includes('doesn\'t work')) {
           mockType = 'debugging'
         } else if (questionLower.includes('algorithm') || questionLower.includes('approach') || questionLower.includes('solve')) {
           mockType = 'algorithm'
-        } else if (questionLower.includes('code') || questionLower.includes('write') || questionLower.includes('implement')) {
-          mockType = 'implementation'
+        } else if (questionLower.includes('code') || questionLower.includes('review') || questionLower.includes('look at') || contextInput.trim()) {
+          mockType = 'code_review'
         }
         
-        setResponse(MOCK_RESPONSES[mockType])
+        const assistantMessage: Message = {
+          role: 'assistant',
+          content: '',
+          response: MOCK_RESPONSES[mockType]
+        }
+        
+        setMessages(prev => [...prev, assistantMessage])
       } else {
         // Real API call
         const res = await fetch('http://localhost:8000/api/assignment-help', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            question,
+            question: input,
             problem_number: PROBLEMS.find(p => p.id === selectedProblem)?.name,
-            context: context || undefined,
+            context: contextInput || undefined,
             course_id: 'cs50'
           }),
         })
         
         if (!res.ok) throw new Error('Failed to get help')
         const data = await res.json()
-        setResponse(data)
+        
+        const assistantMessage: Message = {
+          role: 'assistant',
+          content: '',
+          response: data
+        }
+        
+        setMessages(prev => [...prev, assistantMessage])
       }
     } catch (error) {
       console.error('Error:', error)
-      alert('Error getting help. Make sure the backend is running.')
+      const errorMessage: Message = {
+        role: 'assistant',
+        content: 'Sorry, I encountered an error. Please make sure the backend is running and try again.',
+      }
+      setMessages(prev => [...prev, errorMessage])
     } finally {
       setLoading(false)
     }
   }
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      sendMessage()
+    }
+  }
+
   const handleHintClick = (type: string) => {
     const hintText = HINT_SUGGESTIONS.find(h => h.type === type)?.label || ''
-    setQuestion(hintText)
-    if (useMockData) {
-      setLoading(true)
-      setTimeout(() => {
-        setResponse(MOCK_RESPONSES[type])
-        setLoading(false)
-      }, 1500)
-    }
+    setInput(hintText)
   }
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-green-50 to-teal-100">
-      <div className="max-w-7xl mx-auto p-6 space-y-6">
+      <div className="max-w-6xl mx-auto p-6 space-y-6">
         {/* Header */}
         <div className="bg-white rounded-lg shadow-lg p-6">
           <div className="flex items-start justify-between">
-            <div>
+            <div className="flex-1">
               <h1 className="text-3xl font-bold text-green-900 mb-2">📝 Assignment Helper</h1>
-              <p className="text-gray-600">
-                Get guidance on assignments without direct answers. I'll help you learn by asking the right questions!
+              <p className="text-gray-600 mb-4">
+                Get guidance through continuous conversation. Share code, ask follow-ups, and work through problems together!
               </p>
+              
+              {/* Problem Selector and Controls */}
+              <div className="flex flex-wrap items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium text-gray-700">Problem:</label>
+                  <select
+                    value={selectedProblem}
+                    onChange={(e) => setSelectedProblem(e.target.value)}
+                    className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  >
+                    {PROBLEMS.map(problem => (
+                      <option key={problem.id} value={problem.id}>
+                        {problem.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div className="flex items-center gap-2 text-sm">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={useMockData}
+                      onChange={(e) => setUseMockData(e.target.checked)}
+                      className="rounded"
+                    />
+                    <span className="text-gray-700">Use mock data (demo mode)</span>
+                  </label>
+                </div>
+              </div>
             </div>
             <Link 
               href="/"
               className="px-4 py-2 text-gray-600 hover:text-gray-900 transition"
             >
-              ← Back to Chat
+              ← Back
             </Link>
-          </div>
-          
-          {/* Mock Data Toggle */}
-          <div className="mt-4 flex items-center gap-2 text-sm">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={useMockData}
-                onChange={(e) => setUseMockData(e.target.checked)}
-                className="rounded"
-              />
-              <span className="text-gray-700">
-                Use mock data (for demo - uncheck to use real API)
-              </span>
-            </label>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Input Form */}
-          <div className="lg:col-span-1 space-y-6">
-            <div className="bg-white rounded-lg shadow-lg p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Select Problem
-                </label>
-                <select
-                  value={selectedProblem}
-                  onChange={(e) => setSelectedProblem(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                >
-                  {PROBLEMS.map(problem => (
-                    <option key={problem.id} value={problem.id}>
-                      {problem.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Your Question
-                </label>
-                <textarea
-                  value={question}
-                  onChange={(e) => setQuestion(e.target.value)}
-                  placeholder="What do you need help with?"
-                  rows={4}
-                  className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  What have you tried? (optional)
-                </label>
-                <textarea
-                  value={context}
-                  onChange={(e) => setContext(e.target.value)}
-                  placeholder="Tell me what you've attempted so far..."
-                  rows={3}
-                  className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                />
-              </div>
-
-              <button
-                onClick={handleSubmit}
-                disabled={loading || !question.trim()}
-                className="w-full py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition"
-              >
-                {loading ? 'Getting Guidance...' : 'Get Help'}
-              </button>
-            </div>
-
-            {/* Quick Hints */}
-            <div className="bg-white rounded-lg shadow-lg p-6">
-              <h3 className="text-sm font-semibold text-gray-700 mb-3">
-                💡 Quick Hints
-              </h3>
-              <div className="space-y-2">
-                {HINT_SUGGESTIONS.map((hint) => (
-                  <button
-                    key={hint.type}
-                    onClick={() => handleHintClick(hint.type)}
-                    className="w-full text-left px-3 py-2 text-sm bg-green-50 hover:bg-green-100 text-green-800 rounded-lg transition"
-                  >
-                    {hint.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Response Display */}
-          <div className="lg:col-span-2">
-            <div className="bg-white rounded-lg shadow-lg p-6 min-h-[600px]">
-              {!response && !loading && (
-                <div className="text-center text-gray-500 mt-20">
-                  <div className="text-6xl mb-4">🎓</div>
-                  <p className="text-lg">Ask a question to get started!</p>
-                  <p className="text-sm mt-2">I'll guide you through solving the problem without giving away the answer.</p>
-                </div>
-              )}
-
-              {loading && (
-                <div className="text-center mt-20">
-                  <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mb-4"></div>
-                  <p className="text-gray-600">Preparing your guidance...</p>
-                </div>
-              )}
-
-              {response && (
-                <div className="space-y-6">
-                  {/* Guidance */}
-                  <div>
-                    <h2 className="text-xl font-bold text-gray-800 mb-3 flex items-center gap-2">
-                      <span>💡</span>
-                      <span>Guidance</span>
-                    </h2>
-                    <div className="bg-green-50 border-l-4 border-green-500 p-4 rounded-lg">
+        {/* Chat Container */}
+        <div className="bg-white rounded-lg shadow-lg p-6 min-h-[500px] max-h-[600px] overflow-y-auto">
+          <div className="space-y-4">
+            {messages.map((message, index) => (
+              <div key={index}>
+                {/* User Message */}
+                {message.role === 'user' && (
+                  <div className="ml-12">
+                    <div className="bg-green-100 p-4 rounded-lg">
+                      <div className="font-semibold mb-1 text-sm text-gray-600">
+                        👤 You {message.problemNumber && `• ${message.problemNumber}`}
+                      </div>
                       <div className="text-gray-800 whitespace-pre-wrap">
-                        {response.guidance}
+                        {message.content}
                       </div>
-                    </div>
-                  </div>
-
-                  {/* Key Concepts */}
-                  <div>
-                    <h2 className="text-xl font-bold text-gray-800 mb-3 flex items-center gap-2">
-                      <span>📚</span>
-                      <span>Key Concepts to Review</span>
-                    </h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                      {response.concepts.map((concept, idx) => (
-                        <div
-                          key={idx}
-                          className="bg-blue-50 border border-blue-200 px-4 py-2 rounded-lg text-sm text-blue-900"
-                        >
-                          • {concept}
+                      {message.userContext && (
+                        <div className="mt-3 pt-3 border-t border-green-200">
+                          <div className="text-xs font-semibold text-gray-600 mb-1">Code/Context:</div>
+                          <pre className="bg-gray-900 text-gray-100 p-3 rounded text-xs overflow-x-auto">
+                            {message.userContext}
+                          </pre>
                         </div>
-                      ))}
+                      )}
                     </div>
                   </div>
+                )}
 
-                  {/* Resources */}
-                  <div>
-                    <h2 className="text-xl font-bold text-gray-800 mb-3 flex items-center gap-2">
-                      <span>📖</span>
-                      <span>Recommended Resources</span>
-                    </h2>
-                    <div className="space-y-2">
-                      {response.resources.map((resource, idx) => (
-                        <div
-                          key={idx}
-                          className="bg-purple-50 border-l-4 border-purple-400 px-4 py-2 rounded text-sm text-purple-900"
-                        >
-                          {resource}
+                {/* System Message */}
+                {message.role === 'system' && (
+                  <div className="bg-teal-50 border-2 border-teal-200 p-4 rounded-lg">
+                    <div className="font-semibold mb-2 text-sm text-teal-800">
+                      🎓 Assignment Helper
+                    </div>
+                    <div className="text-gray-800 whitespace-pre-wrap">
+                      {message.content}
+                    </div>
+                  </div>
+                )}
+
+                {/* Assistant Message with Response */}
+                {message.role === 'assistant' && message.response && (
+                  <div className="mr-12">
+                    <div className="bg-gray-50 p-4 rounded-lg border-l-4 border-green-500">
+                      <div className="font-semibold mb-3 text-sm text-gray-600">
+                        🤖 OpenTA Helper
+                      </div>
+
+                      {/* Guidance */}
+                      <div className="mb-4">
+                        <div className="text-sm font-bold text-green-800 mb-2">💡 Guidance:</div>
+                        <div className="text-gray-800 whitespace-pre-wrap text-sm">
+                          {message.response.guidance}
                         </div>
-                      ))}
-                    </div>
-                  </div>
+                      </div>
 
-                  {/* Next Steps */}
-                  <div>
-                    <h2 className="text-xl font-bold text-gray-800 mb-3 flex items-center gap-2">
-                      <span>➡️</span>
-                      <span>Next Steps</span>
-                    </h2>
-                    <div className="space-y-2">
-                      {response.next_steps.map((step, idx) => (
-                        <div
-                          key={idx}
-                          className="bg-orange-50 border-l-4 border-orange-400 px-4 py-3 rounded text-sm text-orange-900 flex items-start gap-3"
-                        >
-                          <span className="font-bold text-orange-600">{idx + 1}.</span>
-                          <span>{step}</span>
+                      {/* Collapsible Details */}
+                      <details className="mb-3">
+                        <summary className="text-sm font-bold text-blue-800 cursor-pointer hover:text-blue-600">
+                          📚 Key Concepts ({message.response.concepts.length})
+                        </summary>
+                        <div className="mt-2 ml-4 space-y-1">
+                          {message.response.concepts.map((concept, idx) => (
+                            <div key={idx} className="text-sm text-gray-700">• {concept}</div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
-                  </div>
+                      </details>
 
-                  {/* Citations */}
-                  {response.citations && response.citations.length > 0 && (
-                    <div>
-                      <h2 className="text-xl font-bold text-gray-800 mb-3 flex items-center gap-2">
-                        <span>📎</span>
-                        <span>Relevant Assignment Details</span>
-                      </h2>
-                      <div className="space-y-3">
-                        {response.citations.map((citation, idx) => (
-                          <div
-                            key={idx}
-                            className="bg-gray-50 border border-gray-200 rounded-lg p-4"
-                          >
-                            <div className="font-semibold text-gray-800 mb-2">
-                              {citation.source} - {citation.section}
-                            </div>
-                            <div className="text-sm text-gray-700 mb-2">
-                              {citation.text}
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              Relevance: {(citation.relevance_score * 100).toFixed(0)}%
-                            </div>
+                      <details className="mb-3">
+                        <summary className="text-sm font-bold text-purple-800 cursor-pointer hover:text-purple-600">
+                          📖 Resources ({message.response.resources.length})
+                        </summary>
+                        <div className="mt-2 ml-4 space-y-1">
+                          {message.response.resources.map((resource, idx) => (
+                            <div key={idx} className="text-sm text-gray-700">• {resource}</div>
+                          ))}
+                        </div>
+                      </details>
+
+                      <details className="mb-3">
+                        <summary className="text-sm font-bold text-orange-800 cursor-pointer hover:text-orange-600">
+                          ➡️ Next Steps ({message.response.next_steps.length})
+                        </summary>
+                        <div className="mt-2 ml-4 space-y-1">
+                          {message.response.next_steps.map((step, idx) => (
+                            <div key={idx} className="text-sm text-gray-700">{idx + 1}. {step}</div>
+                          ))}
+                        </div>
+                      </details>
+
+                      {/* Citations */}
+                      {message.response.citations && message.response.citations.length > 0 && (
+                        <details>
+                          <summary className="text-sm font-bold text-gray-800 cursor-pointer hover:text-gray-600">
+                            📎 Citations ({message.response.citations.length})
+                          </summary>
+                          <div className="mt-2 space-y-2">
+                            {message.response.citations.map((citation, idx) => (
+                              <div key={idx} className="bg-white border border-gray-200 rounded p-3 text-xs">
+                                <div className="font-semibold text-gray-800 mb-1">
+                                  {citation.source} - {citation.section}
+                                </div>
+                                <div className="text-gray-600">{citation.text}</div>
+                              </div>
+                            ))}
                           </div>
-                        ))}
+                        </details>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Simple Assistant Message (errors, etc) */}
+                {message.role === 'assistant' && !message.response && (
+                  <div className="mr-12">
+                    <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded-lg">
+                      <div className="font-semibold mb-1 text-sm text-gray-600">
+                        🤖 OpenTA Helper
+                      </div>
+                      <div className="text-gray-800">
+                        {message.content}
                       </div>
                     </div>
-                  )}
-
-                  {/* Reminder */}
-                  <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-lg">
-                    <p className="text-sm text-yellow-800">
-                      <strong>Remember:</strong> The goal is to learn and understand, not just to complete the assignment.
-                      Take your time with each step and make sure you understand the concepts!
-                    </p>
+                  </div>
+                )}
+              </div>
+            ))}
+            
+            {loading && (
+              <div className="mr-12">
+                <div className="bg-gray-100 p-4 rounded-lg animate-pulse">
+                  <div className="font-semibold mb-1 text-sm text-gray-600">
+                    🤖 OpenTA Helper
+                  </div>
+                  <div className="text-gray-600 flex items-center gap-2">
+                    <span>Analyzing your question</span>
+                    <span className="flex gap-1">
+                      <span className="w-2 h-2 bg-green-400 rounded-full animate-bounce" style={{animationDelay: '0ms'}}></span>
+                      <span className="w-2 h-2 bg-green-400 rounded-full animate-bounce" style={{animationDelay: '150ms'}}></span>
+                      <span className="w-2 h-2 bg-green-400 rounded-full animate-bounce" style={{animationDelay: '300ms'}}></span>
+                    </span>
                   </div>
                 </div>
-              )}
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+        </div>
+
+        {/* Quick Hints */}
+        <div className="bg-white rounded-lg shadow-lg p-4">
+          <div className="text-xs font-semibold text-gray-500 mb-2">💡 Quick Hints:</div>
+          <div className="flex flex-wrap gap-2">
+            {HINT_SUGGESTIONS.map((hint) => (
+              <button
+                key={hint.type}
+                onClick={() => handleHintClick(hint.type)}
+                className="px-3 py-1.5 bg-green-50 hover:bg-green-100 text-green-800 rounded-full text-sm transition"
+              >
+                {hint.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Input Area */}
+        <div className="bg-white rounded-lg shadow-lg p-4 space-y-3">
+          {/* Context/Code Input (Collapsible) */}
+          {showContextBox && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">
+                📋 Code snippet or additional context (optional):
+              </label>
+              <textarea
+                value={contextInput}
+                onChange={(e) => setContextInput(e.target.value)}
+                placeholder="Paste your code here or describe what you've tried..."
+                rows={4}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 font-mono text-sm"
+              />
             </div>
+          )}
+
+          {/* Main Input */}
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowContextBox(!showContextBox)}
+              className={`px-3 py-2 rounded-lg transition ${
+                showContextBox 
+                  ? 'bg-green-100 text-green-700 border-2 border-green-300' 
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+              title="Add code or context"
+            >
+              {showContextBox ? '📋 Hide' : '➕ Code'}
+            </button>
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Ask a question or describe your problem..."
+              className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+              disabled={loading}
+            />
+            <button
+              onClick={sendMessage}
+              disabled={loading || !input.trim()}
+              className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition font-semibold"
+            >
+              Send
+            </button>
+          </div>
+          
+          <div className="text-xs text-gray-500">
+            💡 Tip: Press Enter to send, Shift+Enter for new line. Click "➕ Code" to share code snippets.
           </div>
         </div>
       </div>

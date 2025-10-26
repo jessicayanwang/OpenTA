@@ -5,11 +5,12 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
 
-from models import ChatRequest, ChatResponse, StudyPlanRequest, StudyPlanResponse
+from models import ChatRequest, ChatResponse, StudyPlanRequest, StudyPlanResponse, AssignmentHelpRequest, AssignmentHelpResponse
 from document_store import DocumentStore
 from retrieval import HybridRetriever
 from qa_agent import QAAgent
 from study_plan_agent import StudyPlanAgent
+from assignment_helper import AssignmentHelper
 
 app = FastAPI(title="OpenTA API", version="0.1.0")
 
@@ -27,11 +28,12 @@ document_store = DocumentStore()
 retriever = None
 qa_agent = None
 study_plan_agent = None
+assignment_helper = None
 
 @app.on_event("startup")
 async def startup_event():
     """Initialize the system on startup"""
-    global retriever, qa_agent, study_plan_agent
+    global retriever, qa_agent, study_plan_agent, assignment_helper
     
     print("🚀 Starting OpenTA...")
     
@@ -55,6 +57,8 @@ async def startup_event():
     qa_agent = QAAgent()
     # Initialize Study Plan agent
     study_plan_agent = StudyPlanAgent()
+    # Initialize Assignment Helper
+    assignment_helper = AssignmentHelper()
     
     print("✅ OpenTA is ready!")
 
@@ -116,6 +120,36 @@ async def study_plan(request: StudyPlanRequest):
     plan = study_plan_agent.generate_plan(request)
     print(f"✅ Study plan generated: {plan.duration_weeks} weeks, {plan.hours_per_week} hrs/week")
     return plan
+
+@app.post("/api/assignment-help", response_model=AssignmentHelpResponse)
+async def assignment_help(request: AssignmentHelpRequest):
+    """
+    Help students with assignments using Socratic method
+    Provides guidance without giving direct answers
+    """
+    if not retriever or not assignment_helper:
+        raise HTTPException(status_code=503, detail="System not initialized")
+    
+    print(f"\n📝 Assignment help request: {request.question}")
+    if request.problem_number:
+        print(f"   Problem: {request.problem_number}")
+    
+    # Retrieve relevant assignment information
+    # Combine problem number with question for better retrieval
+    search_query = request.question
+    if request.problem_number:
+        search_query = f"{request.problem_number} {request.question}"
+    
+    retrieved_chunks = retriever.retrieve(search_query, top_k=3)
+    
+    print(f"📖 Retrieved {len(retrieved_chunks)} relevant chunks")
+    
+    # Generate Socratic guidance
+    response = assignment_helper.help_with_assignment(request, retrieved_chunks)
+    
+    print(f"✅ Guidance generated with {len(response.concepts)} key concepts")
+    
+    return response
 
 if __name__ == "__main__":
     import uvicorn

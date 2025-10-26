@@ -46,3 +46,17 @@ class StudyPlanResponse(BaseModel):
     duration_weeks: int
     weekly_plan: List[WeekPlan]
     tips: List[str]
+
+# Assignment Help models
+class AssignmentHelpRequest(BaseModel):
+    question: str
+    problem_number: Optional[str] = None  # e.g., "Problem 1", "Mario"
+    course_id: str = "cs50"
+    context: Optional[str] = None  # what the student has tried so far
+
+class AssignmentHelpResponse(BaseModel):
+    guidance: str  # Socratic hints and guidance
+    concepts: List[str]  # Key concepts to review
+    resources: List[str]  # Where to find help
+    next_steps: List[str]  # Suggested next steps
+    citations: List[Citation]  # Relevant assignment details

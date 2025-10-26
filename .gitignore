@@ -15,6 +15,7 @@ build/
 # Environment variables
 .env
 .env.local
+openta/
 
 # Node
 node_modules/

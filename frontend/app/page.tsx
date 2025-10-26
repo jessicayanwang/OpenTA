@@ -142,12 +142,18 @@ export default function Home() {
           <p className="text-gray-600">
             Your AI Teaching Assistant - Ask questions about CS50 and get answers with citations
           </p>
-          <div className="mt-4">
+          <div className="mt-4 flex gap-3">
             <a
               href="/study-plan"
               className="inline-block px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition font-semibold"
             >
               Generate a Study Plan →
+            </a>
+            <a
+              href="/assignment-help"
+              className="inline-block px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-semibold"
+            >
+              Get Assignment Help 📝
             </a>
           </div>
         </div>

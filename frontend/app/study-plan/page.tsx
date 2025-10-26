@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 
 type StudyTask = {
   day: string
@@ -89,8 +90,18 @@ export default function StudyPlanPage() {
     <main className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <div className="max-w-6xl mx-auto p-6 space-y-6">
         <div className="bg-white rounded-lg shadow-lg p-6">
-          <h1 className="text-3xl font-bold text-indigo-900 mb-2">🗓️ Study Plan Generator</h1>
-          <p className="text-gray-600">Create a personalized plan based on your goals, schedule, and current level.</p>
+          <div className="flex items-start justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-indigo-900 mb-2">🗓️ Study Plan Generator</h1>
+              <p className="text-gray-600">Create a personalized plan based on your goals, schedule, and current level.</p>
+            </div>
+            <Link 
+              href="/"
+              className="px-4 py-2 text-gray-600 hover:text-gray-900 transition"
+            >
+              ← Back to Chat
+            </Link>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

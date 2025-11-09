@@ -1,0 +1,395 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+
+interface QuestionCluster {
+  cluster_id: string
+  representative_question: string
+  similar_questions: string[]
+  count: number
+  artifact: string | null
+  section: string | null
+  canonical_answer_id: string | null
+  created_at: string
+  last_seen: string
+}
+
+interface UnresolvedItem {
+  item_id: string
+  student_question: string
+  student_id: string
+  artifact: string | null
+  section: string | null
+  reason: string
+  confidence: number | null
+  generated_response: string | null
+  created_at: string
+  resolved: boolean
+}
+
+interface ConfusionHeatmapEntry {
+  artifact: string
+  section: string | null
+  confusion_count: number
+  unique_students: number
+  example_questions: string[]
+  last_updated: string
+}
+
+interface GuardrailSettings {
+  course_id: string
+  max_hints: number
+  show_thinking_path: boolean
+  graded_banner_text: string
+  assignment_rubrics: Record<string, string[]>
+  updated_by: string
+  updated_at: string
+}
+
+export default function ProfessorConsole() {
+  const router = useRouter()
+  const [activeTab, setActiveTab] = useState<'clusters' | 'unresolved' | 'heatmap' | 'guardrails'>('clusters')
+  const [clusters, setClusters] = useState<QuestionCluster[]>([])
+  const [unresolvedItems, setUnresolvedItems] = useState<UnresolvedItem[]>([])
+  const [heatmap, setHeatmap] = useState<ConfusionHeatmapEntry[]>([])
+  const [guardrails, setGuardrails] = useState<GuardrailSettings | null>(null)
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    const role = localStorage.getItem('userRole')
+    if (role !== 'professor') {
+      router.push('/login')
+      return
+    }
+    loadData()
+  }, [activeTab])
+
+  const loadData = async () => {
+    setLoading(true)
+    try {
+      if (activeTab === 'clusters') {
+        const res = await fetch('http://localhost:8000/api/professor/clusters?course_id=cs50&min_count=1')
+        const data = await res.json()
+        setClusters(data)
+      } else if (activeTab === 'unresolved') {
+        const res = await fetch('http://localhost:8000/api/professor/unresolved?course_id=cs50')
+        const data = await res.json()
+        setUnresolvedItems(data)
+      } else if (activeTab === 'heatmap') {
+        const res = await fetch('http://localhost:8000/api/professor/confusion-heatmap?course_id=cs50&days=7')
+        const data = await res.json()
+        setHeatmap(data)
+      } else if (activeTab === 'guardrails') {
+        const res = await fetch('http://localhost:8000/api/professor/guardrails?course_id=cs50')
+        const data = await res.json()
+        setGuardrails(data)
+      }
+    } catch (error) {
+      console.error('Error loading data:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const updateGuardrails = async (updates: Partial<GuardrailSettings>) => {
+    try {
+      const res = await fetch('http://localhost:8000/api/professor/guardrails?course_id=cs50&professor_id=prof1', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      })
+      const data = await res.json()
+      setGuardrails(data)
+    } catch (error) {
+      console.error('Error updating guardrails:', error)
+    }
+  }
+
+  return (
+    <div className="flex h-screen bg-[#f7f7f5]">
+      {/* Sidebar */}
+      <div className="w-64 bg-white border-r border-gray-200 flex flex-col">
+        <div className="p-4 border-b border-gray-200">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-8 h-8 bg-gradient-to-br from-orange-400 to-orange-600 rounded-lg flex items-center justify-center text-white font-bold">
+              O
+            </div>
+            <span className="font-semibold text-gray-900">OpenTA</span>
+          </div>
+          <div className="text-xs text-gray-500 mb-2">Professor Console</div>
+        </div>
+        
+        <div className="flex-1 overflow-y-auto p-2">
+          <div className="space-y-1">
+            <button
+              onClick={() => setActiveTab('clusters')}
+              className={`w-full px-3 py-2 text-left text-sm rounded-lg transition flex items-center gap-2 ${
+                activeTab === 'clusters' ? 'bg-gray-100 text-gray-900' : 'text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <span>📊</span>
+              <span>Common Questions</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('unresolved')}
+              className={`w-full px-3 py-2 text-left text-sm rounded-lg transition flex items-center gap-2 ${
+                activeTab === 'unresolved' ? 'bg-gray-100 text-gray-900' : 'text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <span>⚠️</span>
+              <span>Unresolved Queue</span>
+              {unresolvedItems.length > 0 && (
+                <span className="ml-auto bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full">
+                  {unresolvedItems.length}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => setActiveTab('heatmap')}
+              className={`w-full px-3 py-2 text-left text-sm rounded-lg transition flex items-center gap-2 ${
+                activeTab === 'heatmap' ? 'bg-gray-100 text-gray-900' : 'text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <span>🔥</span>
+              <span>Confusion Heatmap</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('guardrails')}
+              className={`w-full px-3 py-2 text-left text-sm rounded-lg transition flex items-center gap-2 ${
+                activeTab === 'guardrails' ? 'bg-gray-100 text-gray-900' : 'text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <span>⚙️</span>
+              <span>Guardrail Settings</span>
+            </button>
+          </div>
+        </div>
+
+        <div className="p-4 border-t border-gray-200">
+          <button
+            onClick={() => router.push('/login')}
+            className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition flex items-center gap-2"
+          >
+            <span>👤</span>
+            <span>Switch Role</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-5xl mx-auto p-8">
+          {/* Header */}
+          <div className="mb-8">
+            <h1 className="text-3xl font-normal text-gray-900 mb-2">
+              {activeTab === 'clusters' && 'Common Questions'}
+              {activeTab === 'unresolved' && 'Unresolved Queue'}
+              {activeTab === 'heatmap' && 'Confusion Heatmap'}
+              {activeTab === 'guardrails' && 'Guardrail Settings'}
+            </h1>
+            <p className="text-gray-600">
+              {activeTab === 'clusters' && 'Review clustered student questions and create canonical answers'}
+              {activeTab === 'unresolved' && 'Triage low-confidence responses and missing citations'}
+              {activeTab === 'heatmap' && 'Identify areas where students are struggling'}
+              {activeTab === 'guardrails' && 'Configure course-wide learning guardrails'}
+            </p>
+          </div>
+
+          {loading ? (
+            <div className="text-center py-20 text-gray-500">
+              <div className="inline-block w-8 h-8 border-4 border-gray-300 border-t-orange-500 rounded-full animate-spin mb-4"></div>
+              <p>Loading...</p>
+            </div>
+          ) : (
+            <>
+              {/* Common Questions Tab */}
+              {activeTab === 'clusters' && (
+                <div className="space-y-4">
+                  {clusters.length === 0 ? (
+                    <div className="text-center py-20 text-gray-500">
+                      <p>No question clusters yet</p>
+                      <p className="text-sm mt-2">Students need to ask questions first</p>
+                    </div>
+                  ) : (
+                    clusters.map((cluster) => (
+                      <div key={cluster.cluster_id} className="bg-white rounded-xl border border-gray-200 p-6 hover:border-gray-300 transition">
+                        <div className="flex justify-between items-start mb-3">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-3">
+                              <span className="bg-orange-100 text-orange-800 text-xs px-2 py-1 rounded-full font-medium">
+                                {cluster.count} questions
+                              </span>
+                              {cluster.artifact && (
+                                <span className="bg-blue-50 text-blue-700 text-xs px-2 py-1 rounded-full">
+                                  {cluster.artifact}
+                                </span>
+                              )}
+                              {cluster.section && (
+                                <span className="bg-green-50 text-green-700 text-xs px-2 py-1 rounded-full">
+                                  {cluster.section}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-gray-900 mb-3 leading-relaxed">
+                              {cluster.representative_question}
+                            </p>
+                            <details className="text-sm text-gray-600">
+                              <summary className="cursor-pointer hover:text-gray-900 font-medium">
+                                View {cluster.similar_questions.length} similar questions
+                              </summary>
+                              <ul className="mt-3 ml-4 space-y-2">
+                                {cluster.similar_questions.slice(0, 5).map((q, i) => (
+                                  <li key={i} className="text-gray-600">• {q}</li>
+                                ))}
+                              </ul>
+                            </details>
+                          </div>
+                          <button className="px-4 py-2 bg-gradient-to-br from-orange-400 to-orange-600 text-white rounded-lg hover:from-orange-500 hover:to-orange-700 text-sm font-medium transition">
+                            Create Answer
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+
+              {/* Unresolved Queue Tab */}
+              {activeTab === 'unresolved' && (
+                <div className="space-y-4">
+                  {unresolvedItems.length === 0 ? (
+                    <div className="text-center py-20 text-gray-500">
+                      <p>✅ No unresolved items</p>
+                      <p className="text-sm mt-2">Great job!</p>
+                    </div>
+                  ) : (
+                    unresolvedItems.map((item) => (
+                      <div key={item.item_id} className="bg-yellow-50 rounded-xl border border-yellow-200 p-6">
+                        <div className="flex justify-between items-start mb-3">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-3">
+                              <span className="bg-yellow-200 text-yellow-900 text-xs px-2 py-1 rounded-full font-medium">
+                                {item.reason.replace('_', ' ')}
+                              </span>
+                              {item.confidence !== null && (
+                                <span className="bg-red-100 text-red-800 text-xs px-2 py-1 rounded-full">
+                                  {(item.confidence * 100).toFixed(0)}% confidence
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-gray-900 mb-3 leading-relaxed">
+                              {item.student_question}
+                            </p>
+                            {item.generated_response && (
+                              <details className="text-sm text-gray-600">
+                                <summary className="cursor-pointer hover:text-gray-900 font-medium">
+                                  View generated response
+                                </summary>
+                                <p className="mt-3 p-3 bg-white rounded-lg border border-gray-200">{item.generated_response}</p>
+                              </details>
+                            )}
+                          </div>
+                          <button className="px-4 py-2 bg-gradient-to-br from-orange-400 to-orange-600 text-white rounded-lg hover:from-orange-500 hover:to-orange-700 text-sm font-medium transition">
+                            Resolve
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+
+              {/* Confusion Heatmap Tab */}
+              {activeTab === 'heatmap' && (
+                <div className="space-y-4">
+                  {heatmap.length === 0 ? (
+                    <div className="text-center py-20 text-gray-500">
+                      <p>No confusion signals yet</p>
+                    </div>
+                  ) : (
+                    heatmap.map((entry, i) => (
+                      <div key={i} className="bg-red-50 rounded-xl border border-red-200 p-6">
+                        <div className="flex items-center gap-2 mb-3">
+                          <span className="bg-red-200 text-red-900 text-xs px-2 py-1 rounded-full font-medium">
+                            {entry.confusion_count} signals
+                          </span>
+                          <span className="bg-orange-100 text-orange-800 text-xs px-2 py-1 rounded-full">
+                            {entry.unique_students} students
+                          </span>
+                        </div>
+                        <p className="text-gray-900 mb-3 font-medium">
+                          {entry.artifact} {entry.section && `- ${entry.section}`}
+                        </p>
+                        <details className="text-sm text-gray-600">
+                          <summary className="cursor-pointer hover:text-gray-900 font-medium">
+                            Example questions
+                          </summary>
+                          <ul className="mt-3 ml-4 space-y-2">
+                            {entry.example_questions.map((q, i) => (
+                              <li key={i} className="text-gray-600">• {q}</li>
+                            ))}
+                          </ul>
+                        </details>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+
+              {/* Guardrails Tab */}
+              {activeTab === 'guardrails' && guardrails && (
+                <div className="space-y-6">
+                  <div className="bg-white rounded-xl border border-gray-200 p-6">
+                    <label className="block text-sm font-medium text-gray-900 mb-3">
+                      Maximum Hints per Assignment
+                    </label>
+                    <select
+                      value={guardrails.max_hints}
+                      onChange={(e) => updateGuardrails({ max_hints: parseInt(e.target.value) })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    >
+                      <option value={1}>1 hint</option>
+                      <option value={3}>3 hints</option>
+                      <option value={5}>5 hints</option>
+                    </select>
+                  </div>
+
+                  <div className="bg-white rounded-xl border border-gray-200 p-6">
+                    <label className="flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={guardrails.show_thinking_path}
+                        onChange={(e) => updateGuardrails({ show_thinking_path: e.target.checked })}
+                        className="mr-3 w-4 h-4 text-orange-600 rounded focus:ring-orange-500"
+                      />
+                      <span className="text-sm font-medium text-gray-900">
+                        Show thinking path to students
+                      </span>
+                    </label>
+                  </div>
+
+                  <div className="bg-white rounded-xl border border-gray-200 p-6">
+                    <label className="block text-sm font-medium text-gray-900 mb-3">
+                      Graded Assignment Banner Text
+                    </label>
+                    <textarea
+                      value={guardrails.graded_banner_text}
+                      onChange={(e) => updateGuardrails({ graded_banner_text: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
+                      rows={3}
+                    />
+                  </div>
+
+                  <div className="text-sm text-gray-500">
+                    Last updated by {guardrails.updated_by} at {new Date(guardrails.updated_at).toLocaleString()}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}

@@ -7,6 +7,17 @@ from rank_bm25 import BM25Okapi
 from sklearn.metrics.pairwise import cosine_similarity
 from document_store import DocumentChunk
 
+class SimpleEmbedder:
+    """Simple embedder wrapper for semantic clustering"""
+    def encode(self, texts: List[str]) -> np.ndarray:
+        """Generate embeddings for texts"""
+        if isinstance(texts, str):
+            texts = [texts]
+        # Simulated embeddings (consistent with seed based on text)
+        seed = hash(''.join(texts[:3])) % 2**32 if texts else 42
+        np.random.seed(seed)
+        return np.random.rand(len(texts), 384)
+
 class HybridRetriever:
     """Combines BM25 and semantic search for retrieval"""
     
@@ -14,6 +25,7 @@ class HybridRetriever:
         self.chunks: List[DocumentChunk] = []
         self.bm25 = None
         self.embeddings = None
+        self.embedder = SimpleEmbedder()  # For semantic clustering
         
     def index_chunks(self, chunks: List[DocumentChunk]):
         """Index chunks for retrieval"""

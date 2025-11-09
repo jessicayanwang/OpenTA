@@ -1,0 +1,248 @@
+"""
+OpenTA Backend - FastAPI Application
+"""
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pathlib import Path
+
+from models import (
+    ChatRequest, ChatResponse, StudyPlanRequest, StudyPlanResponse, 
+    AssignmentHelpRequest, AssignmentHelpResponse,
+    QuestionCluster, CanonicalAnswer, CreateCanonicalAnswerRequest,
+    UnresolvedItem, ResolveItemRequest, ConfusionHeatmapEntry,
+    GuardrailSettings, UpdateGuardrailRequest, UserRole
+)
+from document_store import DocumentStore
+from retrieval import HybridRetriever
+from qa_agent import QAAgent
+from study_plan_agent import StudyPlanAgent
+from assignment_helper import AssignmentHelper
+from professor_service import ProfessorService
+from typing import List
+
+app = FastAPI(title="OpenTA API", version="0.1.0")
+
+# CORS middleware for frontend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Initialize components
+document_store = DocumentStore()
+retriever = None
+qa_agent = None
+study_plan_agent = None
+assignment_helper = None
+professor_service = ProfessorService()
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize the system on startup"""
+    global retriever, qa_agent, study_plan_agent, assignment_helper
+    
+    print("🚀 Starting OpenTA...")
+    
+    # Load course documents
+    data_dir = Path(__file__).parent / "data"
+    
+    print("📚 Loading course documents...")
+    for file_path in data_dir.glob("*.txt"):
+        print(f"  - Loading {file_path.name}")
+        with open(file_path, 'r') as f:
+            content = f.read()
+            document_store.ingest_document(content, file_path.name)
+    
+    print(f"✅ Loaded {len(document_store.chunks)} document chunks")
+    
+    # Initialize retriever and index chunks
+    retriever = HybridRetriever()
+    retriever.index_chunks(document_store.get_all_chunks())
+    
+    # Initialize QA agent (no API key needed)
+    qa_agent = QAAgent()
+    # Initialize Study Plan agent
+    study_plan_agent = StudyPlanAgent()
+    # Initialize Assignment Helper
+    assignment_helper = AssignmentHelper()
+    
+    print("✅ OpenTA is ready!")
+
+@app.get("/")
+async def root():
+    """Root endpoint"""
+    return {
+        "message": "OpenTA API",
+        "version": "0.1.0",
+        "status": "running"
+    }
+
+@app.get("/api/health")
+async def health_check():
+    """Health check endpoint"""
+    return {
+        "status": "healthy",
+        "chunks_indexed": len(document_store.chunks) if document_store else 0
+    }
+
+@app.post("/api/chat", response_model=ChatResponse)
+async def chat(request: ChatRequest, student_id: str = "student1"):
+    """
+    Main chat endpoint - answers questions with grounded responses
+    """
+    if not retriever or not qa_agent:
+        raise HTTPException(status_code=503, detail="System not initialized")
+    
+    print(f"\n❓ Question: {request.question}")
+    
+    # Check for canonical answer first
+    artifact = None
+    section = None
+    if retrieved_chunks := retriever.retrieve(request.question, top_k=3):
+        artifact = retrieved_chunks[0][0].source if retrieved_chunks else None
+        section = retrieved_chunks[0][0].section if retrieved_chunks else None
+    
+    canonical = professor_service.get_canonical_answer_for_question(
+        request.question, artifact, section
+    )
+    
+    if canonical:
+        print(f"📚 Using canonical answer: {canonical.answer_id}")
+        return ChatResponse(
+            answer=canonical.answer_markdown,
+            citations=canonical.citations,
+            confidence=0.95
+        )
+    
+    # Retrieve relevant chunks
+    retrieved_chunks = retriever.retrieve(request.question, top_k=3)
+    
+    if not retrieved_chunks:
+        return ChatResponse(
+            answer="I couldn't find relevant information in the course materials to answer your question.",
+            citations=[],
+            confidence=0.0
+        )
+    
+    print(f"📖 Retrieved {len(retrieved_chunks)} relevant chunks")
+    
+    # Generate answer with citations
+    response = qa_agent.generate_answer(request.question, retrieved_chunks)
+    
+    print(f"✅ Answer generated (confidence: {response.confidence:.2f})")
+    
+    # Log question for professor analytics
+    artifact = retrieved_chunks[0][0].source if retrieved_chunks else None
+    section = retrieved_chunks[0][0].section if retrieved_chunks else None
+    professor_service.log_question(
+        student_id=student_id,
+        question=request.question,
+        artifact=artifact,
+        section=section,
+        confidence=response.confidence,
+        response=response.answer
+    )
+    
+    return response
+
+@app.post("/api/study-plan", response_model=StudyPlanResponse)
+async def study_plan(request: StudyPlanRequest):
+    """
+    Generate a personalized study plan based on user preferences
+    """
+    if not study_plan_agent:
+        raise HTTPException(status_code=503, detail="System not initialized")
+
+    print(f"\n🗓️ Study Plan request: scope={request.goal_scope}, hours/week={request.hours_per_week}, level={request.current_level}")
+    plan = study_plan_agent.generate_plan(request)
+    print(f"✅ Study plan generated: {plan.duration_weeks} weeks, {plan.hours_per_week} hrs/week")
+    return plan
+
+@app.post("/api/assignment-help", response_model=AssignmentHelpResponse)
+async def assignment_help(request: AssignmentHelpRequest):
+    """
+    Help students with assignments using Socratic method
+    Provides guidance without giving direct answers
+    """
+    if not retriever or not assignment_helper:
+        raise HTTPException(status_code=503, detail="System not initialized")
+    
+    print(f"\n📝 Assignment help request: {request.question}")
+    if request.problem_number:
+        print(f"   Problem: {request.problem_number}")
+    
+    # Retrieve relevant assignment information
+    # Combine problem number with question for better retrieval
+    search_query = request.question
+    if request.problem_number:
+        search_query = f"{request.problem_number} {request.question}"
+    
+    retrieved_chunks = retriever.retrieve(search_query, top_k=3)
+    
+    print(f"📖 Retrieved {len(retrieved_chunks)} relevant chunks")
+    
+    # Generate Socratic guidance
+    response = assignment_helper.help_with_assignment(request, retrieved_chunks)
+    
+    print(f"✅ Guidance generated with {len(response.concepts)} key concepts")
+    
+    return response
+
+# ========== PROFESSOR CONSOLE ENDPOINTS ==========
+
+@app.get("/api/professor/clusters", response_model=List[QuestionCluster])
+async def get_question_clusters(course_id: str = "cs50", min_count: int = 2):
+    """Get question clusters for professor review"""
+    return professor_service.get_question_clusters(course_id, min_count)
+
+@app.post("/api/professor/canonical-answer", response_model=CanonicalAnswer)
+async def create_canonical_answer(request: CreateCanonicalAnswerRequest, professor_id: str = "prof1"):
+    """Create a canonical answer for a question cluster"""
+    return professor_service.create_canonical_answer(request, professor_id)
+
+@app.post("/api/professor/canonical-answer/{answer_id}/publish", response_model=CanonicalAnswer)
+async def publish_canonical_answer(answer_id: str):
+    """Publish a canonical answer"""
+    try:
+        return professor_service.publish_canonical_answer(answer_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+@app.get("/api/professor/unresolved", response_model=List[UnresolvedItem])
+async def get_unresolved_queue(course_id: str = "cs50"):
+    """Get unresolved queue items"""
+    return professor_service.get_unresolved_queue(course_id)
+
+@app.post("/api/professor/resolve", response_model=UnresolvedItem)
+async def resolve_item(request: ResolveItemRequest, professor_id: str = "prof1"):
+    """Resolve an unresolved queue item"""
+    try:
+        return professor_service.resolve_item(request, professor_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+@app.get("/api/professor/confusion-heatmap", response_model=List[ConfusionHeatmapEntry])
+async def get_confusion_heatmap(course_id: str = "cs50", days: int = 7):
+    """Get confusion heatmap"""
+    return professor_service.get_confusion_heatmap(course_id, days)
+
+@app.get("/api/professor/guardrails", response_model=GuardrailSettings)
+async def get_guardrail_settings(course_id: str = "cs50"):
+    """Get guardrail settings"""
+    return professor_service.get_guardrail_settings(course_id)
+
+@app.put("/api/professor/guardrails", response_model=GuardrailSettings)
+async def update_guardrail_settings(
+    course_id: str, 
+    request: UpdateGuardrailRequest, 
+    professor_id: str = "prof1"
+):
+    """Update guardrail settings"""
+    return professor_service.update_guardrail_settings(course_id, request, professor_id)
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

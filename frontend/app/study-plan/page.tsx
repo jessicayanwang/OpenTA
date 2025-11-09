@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 
 type StudyTask = {
   day: string
@@ -32,6 +32,7 @@ const constraintOptions = [
 ]
 
 export default function StudyPlanPage() {
+  const router = useRouter()
   const [goalScope, setGoalScope] = useState<'term' | 'midterm' | 'final'>('term')
   const [hoursPerWeek, setHoursPerWeek] = useState<number>(8)
   const [currentLevel, setCurrentLevel] = useState<'beginner' | 'intermediate' | 'advanced'>('intermediate')
@@ -87,27 +88,83 @@ export default function StudyPlanPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="max-w-6xl mx-auto p-6 space-y-6">
-        <div className="bg-white rounded-lg shadow-lg p-6">
-          <div className="flex items-start justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-indigo-900 mb-2">🗓️ Study Plan Generator</h1>
-              <p className="text-gray-600">Create a personalized plan based on your goals, schedule, and current level.</p>
+    <div className="flex h-screen bg-[#f7f7f5]">
+      {/* Sidebar */}
+      <div className="w-64 bg-white border-r border-gray-200 flex flex-col">
+        {/* Header */}
+        <div className="p-4 border-b border-gray-200">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-gradient-to-br from-orange-400 to-orange-600 rounded-lg flex items-center justify-center text-white font-bold">
+              O
             </div>
-            <Link 
-              href="/"
-              className="px-4 py-2 text-gray-600 hover:text-gray-900 transition"
-            >
-              ← Back to Chat
-            </Link>
+            <span className="font-semibold text-gray-900">OpenTA</span>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Form */}
-          <div className="bg-white rounded-lg shadow-lg p-6 lg:col-span-1 space-y-4">
-            <div>
+        {/* Main Navigation */}
+        <div className="p-3 border-b border-gray-200">
+          <button
+            onClick={() => router.push('/student')}
+            className="w-full px-4 py-2.5 bg-gradient-to-br from-orange-400 to-orange-600 text-white rounded-lg hover:from-orange-500 hover:to-orange-700 transition text-sm font-medium flex items-center justify-center gap-2"
+          >
+            <span>💬</span>
+            <span>New Chat</span>
+          </button>
+        </div>
+
+        <div className="p-3 space-y-1">
+          <button
+            onClick={() => router.push('/faq')}
+            className="w-full px-3 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition flex items-center gap-3"
+          >
+            <span className="text-lg">❓</span>
+            <span className="font-medium">FAQ</span>
+          </button>
+          <button
+            onClick={() => router.push('/study-plan')}
+            className="w-full px-3 py-2.5 text-left text-sm bg-gray-100 text-gray-900 rounded-lg transition flex items-center gap-3"
+          >
+            <span className="text-lg">📚</span>
+            <span className="font-medium">Study Plan</span>
+          </button>
+          <button
+            onClick={() => router.push('/assignment-help')}
+            className="w-full px-3 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition flex items-center gap-3"
+          >
+            <span className="text-lg">📝</span>
+            <span className="font-medium">Assignment Help</span>
+          </button>
+        </div>
+        
+        {/* Chat History */}
+        <div className="flex-1 overflow-y-auto px-3">
+          <div className="text-xs font-semibold text-gray-500 px-3 py-2 mt-2">RECENT CHATS</div>
+          <div className="text-xs text-gray-400 px-3 py-2">No chat history yet</div>
+        </div>
+
+        {/* Bottom Actions */}
+        <div className="p-3 border-t border-gray-200">
+          <button
+            onClick={() => router.push('/login')}
+            className="w-full px-3 py-2 text-left text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition flex items-center gap-2"
+          >
+            <span>👤</span>
+            <span>Switch Role</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-5xl mx-auto p-8">
+          <div className="mb-8">
+            <h1 className="text-4xl font-normal text-gray-900 mb-3">Study Plan Generator</h1>
+            <p className="text-gray-600 text-lg">Create a personalized plan based on your goals, schedule, and current level</p>
+          </div>
+
+          <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
+            <div className="space-y-4">
+              <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Goal scope</label>
               <select
                 value={goalScope}
@@ -222,7 +279,7 @@ export default function StudyPlanPage() {
           </div>
 
           {/* Output */}
-          <div className="bg-white rounded-lg shadow-lg p-6 lg:col-span-2">
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
             {!plan && !loading && (
               <div className="text-gray-600">Fill the form and click Generate to see your plan here.</div>
             )}
@@ -270,8 +327,9 @@ export default function StudyPlanPage() {
               <div className="text-gray-700">Generating your plan...</div>
             )}
           </div>
+          </div>
         </div>
       </div>
-    </main>
+    </div>
   )
 }

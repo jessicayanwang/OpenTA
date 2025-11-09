@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 
 interface Citation {
   source: string
@@ -232,12 +232,7 @@ const HINT_SUGGESTIONS = [
 ]
 
 export default function AssignmentHelpPage() {
-  const [selectedProblem, setSelectedProblem] = useState<string>('problem2')
-  const [input, setInput] = useState<string>('')
-  const [contextInput, setContextInput] = useState<string>('')
-  const [showContextBox, setShowContextBox] = useState<boolean>(false)
-  const [loading, setLoading] = useState<boolean>(false)
-  const [useMockData, setUseMockData] = useState<boolean>(true)
+  const router = useRouter()
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'system',
@@ -261,6 +256,12 @@ Let's work through this together! 🎓
 **Quick tip:** Select your problem from the dropdown above, then start asking questions!`,
     }
   ])
+  const [input, setInput] = useState('')
+  const [contextInput, setContextInput] = useState('')
+  const [selectedProblem, setSelectedProblem] = useState('')
+  const [showContextBox, setShowContextBox] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [useMockData, setUseMockData] = useState(true)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // Auto-scroll to bottom when new messages arrive
@@ -356,59 +357,113 @@ Let's work through this together! 🎓
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-green-50 to-teal-100">
-      <div className="max-w-6xl mx-auto p-6 space-y-6">
+    <div className="flex h-screen bg-[#f7f7f5]">
+      {/* Sidebar */}
+      <div className="w-64 bg-white border-r border-gray-200 flex flex-col">
         {/* Header */}
-        <div className="bg-white rounded-lg shadow-lg p-6">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <h1 className="text-3xl font-bold text-green-900 mb-2">📝 Assignment Helper</h1>
-              <p className="text-gray-600 mb-4">
-                Get guidance through continuous conversation. Share code, ask follow-ups, and work through problems together!
-              </p>
-              
-              {/* Problem Selector and Controls */}
-              <div className="flex flex-wrap items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <label className="text-sm font-medium text-gray-700">Problem:</label>
-                  <select
-                    value={selectedProblem}
-                    onChange={(e) => setSelectedProblem(e.target.value)}
-                    className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  >
-                    {PROBLEMS.map(problem => (
-                      <option key={problem.id} value={problem.id}>
-                        {problem.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                
-                <div className="flex items-center gap-2 text-sm">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={useMockData}
-                      onChange={(e) => setUseMockData(e.target.checked)}
-                      className="rounded"
-                    />
-                    <span className="text-gray-700">Use mock data (demo mode)</span>
-                  </label>
-                </div>
-              </div>
+        <div className="p-4 border-b border-gray-200">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-gradient-to-br from-orange-400 to-orange-600 rounded-lg flex items-center justify-center text-white font-bold">
+              O
             </div>
-            <Link 
-              href="/"
-              className="px-4 py-2 text-gray-600 hover:text-gray-900 transition"
-            >
-              ← Back
-            </Link>
+            <span className="font-semibold text-gray-900">OpenTA</span>
+          </div>
+        </div>
+
+        {/* Main Navigation */}
+        <div className="p-3 border-b border-gray-200">
+          <button
+            onClick={() => router.push('/student')}
+            className="w-full px-4 py-2.5 bg-gradient-to-br from-orange-400 to-orange-600 text-white rounded-lg hover:from-orange-500 hover:to-orange-700 transition text-sm font-medium flex items-center justify-center gap-2"
+          >
+            <span>💬</span>
+            <span>New Chat</span>
+          </button>
+        </div>
+
+        <div className="p-3 space-y-1">
+          <button
+            onClick={() => router.push('/faq')}
+            className="w-full px-3 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition flex items-center gap-3"
+          >
+            <span className="text-lg">❓</span>
+            <span className="font-medium">FAQ</span>
+          </button>
+          <button
+            onClick={() => router.push('/study-plan')}
+            className="w-full px-3 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition flex items-center gap-3"
+          >
+            <span className="text-lg">📚</span>
+            <span className="font-medium">Study Plan</span>
+          </button>
+          <button
+            onClick={() => router.push('/assignment-help')}
+            className="w-full px-3 py-2.5 text-left text-sm bg-gray-100 text-gray-900 rounded-lg transition flex items-center gap-3"
+          >
+            <span className="text-lg">📝</span>
+            <span className="font-medium">Assignment Help</span>
+          </button>
+        </div>
+        
+        {/* Chat History */}
+        <div className="flex-1 overflow-y-auto px-3">
+          <div className="text-xs font-semibold text-gray-500 px-3 py-2 mt-2">RECENT CHATS</div>
+          <div className="text-xs text-gray-400 px-3 py-2">No chat history yet</div>
+        </div>
+
+        {/* Bottom Actions */}
+        <div className="p-3 border-t border-gray-200">
+          <button
+            onClick={() => router.push('/login')}
+            className="w-full px-3 py-2 text-left text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition flex items-center gap-2"
+          >
+            <span>👤</span>
+            <span>Switch Role</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col">
+        <div className="px-4 py-3 border-b border-gray-200 bg-white">
+          <div className="max-w-4xl mx-auto">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h1 className="text-2xl font-normal text-gray-900">Assignment Helper</h1>
+                <p className="text-gray-600 text-sm">Get Socratic guidance on your assignments</p>
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer text-sm">
+                <input
+                  type="checkbox"
+                  checked={useMockData}
+                  onChange={(e) => setUseMockData(e.target.checked)}
+                  className="rounded"
+                />
+                <span className="text-gray-700">Demo mode</span>
+              </label>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-gray-600 whitespace-nowrap">Problem:</label>
+              <select
+                value={selectedProblem}
+                onChange={(e) => setSelectedProblem(e.target.value)}
+                className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm"
+              >
+                <option value="">Select problem...</option>
+                {PROBLEMS.map(problem => (
+                  <option key={problem.id} value={problem.id}>
+                    {problem.name}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
 
         {/* Chat Container */}
-        <div className="bg-white rounded-lg shadow-lg p-6 min-h-[500px] max-h-[600px] overflow-y-auto">
-          <div className="space-y-4">
+        <div className="flex-1 overflow-y-auto p-6">
+          <div className="max-w-4xl mx-auto space-y-4">
             {messages.map((message, index) => (
               <div key={index}>
                 {/* User Message */}
@@ -554,24 +609,26 @@ Let's work through this together! 🎓
           </div>
         </div>
 
-        {/* Quick Hints */}
-        <div className="bg-white rounded-lg shadow-lg p-4">
-          <div className="text-xs font-semibold text-gray-500 mb-2">💡 Quick Hints:</div>
-          <div className="flex flex-wrap gap-2">
-            {HINT_SUGGESTIONS.map((hint) => (
-              <button
-                key={hint.type}
-                onClick={() => handleHintClick(hint.type)}
-                className="px-3 py-1.5 bg-green-50 hover:bg-green-100 text-green-800 rounded-full text-sm transition"
-              >
-                {hint.label}
-              </button>
-            ))}
-          </div>
-        </div>
+        {/* Input Area - Fixed at bottom */}
+        <div className="border-t border-gray-200 bg-white p-3">
+          <div className="max-w-4xl mx-auto space-y-2">
+            {/* Quick Hints */}
+            <div>
+              <div className="text-xs font-semibold text-gray-500 mb-1.5">💡 Quick Hints:</div>
+            <div className="flex flex-wrap gap-1.5">
+              {HINT_SUGGESTIONS.map((hint) => (
+                <button
+                  key={hint.type}
+                  onClick={() => handleHintClick(hint.type)}
+                  className="px-2.5 py-1 bg-green-50 hover:bg-green-100 text-green-800 rounded-full text-xs transition"
+                >
+                  {hint.label}
+                </button>
+              ))}
+              </div>
+            </div>
 
-        {/* Input Area */}
-        <div className="bg-white rounded-lg shadow-lg p-4 space-y-3">
+            <div className="space-y-2">
           {/* Context/Code Input (Collapsible) */}
           {showContextBox && (
             <div className="space-y-2">
@@ -592,38 +649,38 @@ Let's work through this together! 🎓
           <div className="flex gap-2">
             <button
               onClick={() => setShowContextBox(!showContextBox)}
-              className={`px-3 py-2 rounded-lg transition ${
+              className={`px-3 py-2 rounded-lg transition text-sm ${
                 showContextBox 
-                  ? 'bg-green-100 text-green-700 border-2 border-green-300' 
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  ? 'bg-green-600 text-white' 
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
-              title="Add code or context"
             >
-              {showContextBox ? '📋 Hide' : '➕ Code'}
+              ➕ Code
             </button>
-            <input
-              type="text"
+            <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Ask a question or describe your problem..."
-              className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-              disabled={loading}
+              rows={2}
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 resize-none text-sm"
             />
             <button
               onClick={sendMessage}
               disabled={loading || !input.trim()}
-              className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition font-semibold"
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition font-medium text-sm"
             >
               Send
             </button>
           </div>
           
-          <div className="text-xs text-gray-500">
-            💡 Tip: Press Enter to send, Shift+Enter for new line. Click "➕ Code" to share code snippets.
+            <div className="text-xs text-gray-500">
+              💡 Tip: Press Enter to send, Shift+Enter for new line. Click "➕ Code" to share code snippets.
+            </div>
+            </div>
           </div>
         </div>
       </div>
-    </main>
+    </div>
   )
 }

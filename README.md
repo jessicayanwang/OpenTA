@@ -1,10 +1,22 @@
-# OpenTA - AI Teaching Assistant MVP
+# OpenTA - AI Teaching Assistant
 
-An agentic teaching assistant that provides grounded, citation-backed answers to course questions.
+An agentic teaching assistant that provides grounded, citation-backed answers to course questions with professor oversight and control.
 
-## 🎯 MVP Features
+## ✨ New: Enhanced User Experience
 
-This MVP demonstrates **one complete end-to-end task**: answering course logistics and content questions with citations from ingested course materials.
+OpenTA now features a **polished, user-friendly interface** designed to clearly communicate value and guide users through the system:
+
+- 🎨 **Beautiful Landing Page**: Clear value proposition, feature highlights, and user flows
+- 🚀 **Intuitive Onboarding**: Welcome tour for first-time students explaining all features
+- 🎭 **Role-Based Experience**: Tailored interfaces for students and professors
+- 📊 **Visual Polish**: Modern design with smooth animations, gradients, and micro-interactions
+- 📖 **Comprehensive Documentation**: Detailed user flow diagrams and design rationale
+
+See `USER_FLOW.md` and `UX_IMPROVEMENTS.md` for complete details.
+
+## 🎯 Core Features
+
+OpenTA demonstrates **complete end-to-end workflows** for both students and professors:
 
 ### What Works
 - ✅ Document ingestion and chunking (syllabus, assignments)
@@ -25,6 +37,13 @@ This MVP demonstrates **one complete end-to-end task**: answering course logisti
 - Python 3.8+
 - Node.js 18+
 - OpenAI API key (optional - has fallback mode)
+
+### Experience the New Interface
+
+1. **Visit the Landing Page**: Start at `http://localhost:3000` to see the new welcome experience
+2. **Choose Your Role**: Select Student or Professor to see tailored interfaces
+3. **First-Time Tour**: Students see an onboarding modal explaining all features
+4. **Explore Features**: Navigate through Q&A, Study Plans, Assignment Help, and more
 
 ### Backend Setup
 

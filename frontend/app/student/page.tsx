@@ -226,8 +226,8 @@ export default function Home() {
         {/* Messages Area */}
         <div className="flex-1 overflow-y-auto bg-[#f7f7f5]">
           {showWelcome && messages.length === 0 ? (
-            <div className="max-w-3xl mx-auto px-6 py-24">
-              <div className="text-center mb-20">
+            <div className="max-w-4xl mx-auto px-8 py-12">
+              <div className="text-center mb-12">
                 <h1 className="font-normal text-6xl tracking-tight text-gray-900 mb-5">
                   Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'}
                 </h1>
@@ -247,13 +247,13 @@ export default function Home() {
               </div>
             </div>
           ) : (
-            <div className="max-w-3xl mx-auto px-6 py-8 space-y-6 bg-[#f7f7f5]">
+            <div className="max-w-4xl mx-auto px-8 py-6 space-y-4 bg-[#f7f7f5]">
               {messages.map((message, index) => (
                 <div key={index}>
                   {message.role === 'user' ? (
                     /* User Message - Brand Orange */
-                    <div className="flex justify-end mb-8">
-                      <div className="bg-gradient-to-br from-orange-500 to-orange-600 px-6 py-4 rounded-2xl max-w-2xl shadow-sm">
+                    <div className="flex justify-end mb-4">
+                      <div className="bg-gradient-to-br from-orange-500 to-orange-600 px-4 py-2.5 rounded-2xl max-w-lg shadow-sm">
                         <div className="text-white text-sm leading-relaxed">
                           {message.content}
                         </div>
@@ -261,12 +261,12 @@ export default function Home() {
                     </div>
                   ) : (
                     /* Assistant Message - Light Gray */
-                    <div className="flex gap-4 mb-8">
-                      <div className="w-10 h-10 bg-gradient-to-br from-orange-400 to-orange-600 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm">
-                        <Sparkles size={18} className="text-white" />
+                    <div className="flex gap-3 mb-4">
+                      <div className="w-8 h-8 bg-gradient-to-br from-orange-400 to-orange-600 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm">
+                        <Sparkles size={16} className="text-white" />
                       </div>
-                      <div className="flex-1 max-w-2xl">
-                        <div className="bg-gray-50 border border-gray-200 rounded-2xl px-6 py-5 shadow-sm">
+                      <div className="flex-1 max-w-lg">
+                        <div className="bg-white border border-gray-200 rounded-xl px-4 py-3 shadow-sm">
                           <div className="text-gray-800 text-sm leading-relaxed prose prose-sm max-w-none">
                             <ReactMarkdown>{message.content}</ReactMarkdown>
                           </div>
@@ -279,10 +279,10 @@ export default function Home() {
 
                           {/* Citations - Academic Pill Style */}
                           {message.citations && message.citations.length > 0 && (
-                            <div className="mt-5 pt-5 border-t border-gray-200">
-                              <div className="flex flex-wrap gap-2">
+                            <div className="mt-3 pt-3 border-t border-gray-200">
+                              <div className="flex flex-wrap gap-1.5">
                                 {message.citations.map((citation, idx) => (
-                                  <span key={idx} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-orange-50 text-orange-700 text-xs font-medium rounded-full border border-orange-200">
+                                  <span key={idx} className="inline-flex items-center gap-1 px-2 py-1 bg-orange-50 text-orange-700 text-xs font-medium rounded-full border border-orange-200">
                                     <FileText size={12} />
                                     {citation.source} • {citation.section}
                                   </span>
@@ -293,17 +293,16 @@ export default function Home() {
 
                           {/* Suggested Follow-up Questions */}
                           {message.suggestedQuestions && message.suggestedQuestions.length > 0 && (
-                            <div className="mt-5 pt-5 border-t border-gray-200">
-                              <div className="text-xs font-semibold text-gray-600 mb-3">Suggested follow-ups</div>
-                              <div className="space-y-2">
+                            <div className="mt-3 pt-3 border-t border-gray-200">
+                              <div className="text-xs text-gray-500 mb-2">Suggested:</div>
+                              <div className="flex flex-wrap gap-2">
                                 {message.suggestedQuestions.map((question, idx) => (
                                   <button
                                     key={idx}
                                     onClick={() => setInput(question)}
-                                    className="w-full text-left text-xs text-gray-700 hover:text-gray-900 bg-white hover:bg-gray-50 px-4 py-3 rounded-xl transition-all duration-200 flex items-center justify-between group focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-30 border border-gray-200 hover:border-gray-300"
+                                    className="text-xs text-gray-700 hover:text-orange-600 bg-gray-50 hover:bg-orange-50 px-3 py-1.5 rounded-full transition-all duration-200 border border-gray-200 hover:border-orange-300 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-30"
                                   >
-                                    <span>{question}</span>
-                                    <ChevronRight size={14} className="text-gray-400 group-hover:text-orange-500 transition-colors" />
+                                    {question}
                                   </button>
                                 ))}
                               </div>
@@ -317,12 +316,12 @@ export default function Home() {
               ))}
               
               {loading && (
-                <div className="flex gap-4 mb-8">
-                  <div className="w-10 h-10 bg-gradient-to-br from-orange-400 to-orange-600 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm">
-                    <Sparkles size={18} className="text-white" />
+                <div className="flex gap-3 mb-4">
+                  <div className="w-8 h-8 bg-gradient-to-br from-orange-400 to-orange-600 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm">
+                    <Sparkles size={16} className="text-white" />
                   </div>
-                  <div className="flex-1 max-w-2xl">
-                    <div className="bg-gray-50 border border-gray-200 rounded-2xl px-6 py-5 shadow-sm">
+                  <div className="flex-1 max-w-lg">
+                    <div className="bg-white border border-gray-200 rounded-xl px-4 py-3 shadow-sm">
                       <div className="flex items-center gap-3 text-gray-600">
                         <div className="flex gap-1.5">
                           <span className="w-2 h-2 bg-orange-500 rounded-full animate-bounce"></span>
@@ -340,28 +339,25 @@ export default function Home() {
           )}
         </div>
 
-        {/* Input Area - Premium Floating Search Bar */}
-        <div className="border-t border-gray-200 bg-[#f7f7f5] p-6">
-          <div className="max-w-3xl mx-auto px-6">
-            <div className="relative">
-              <textarea
+        {/* Input Area - Compact */}
+        <div className="border-t border-gray-200 bg-white px-4 py-3">
+          <div className="max-w-4xl mx-auto">
+            <div className="relative flex items-center gap-2">
+              <input
+                type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Ask a question..."
-                rows={1}
-                className="w-full px-6 py-4 pr-14 bg-white border border-gray-300 hover:border-gray-400 focus:border-orange-500 rounded-full text-gray-900 text-sm placeholder:text-gray-500 leading-relaxed resize-none shadow-lg hover:shadow-xl focus:shadow-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-30"
+                className="flex-1 px-4 py-2.5 bg-white border border-gray-300 hover:border-gray-400 focus:border-orange-500 rounded-lg text-gray-900 text-sm placeholder:text-gray-500 resize-none shadow-sm hover:shadow focus:shadow transition-all duration-200 focus:outline-none focus:ring-1 focus:ring-orange-500"
               />
               <button
                 onClick={sendMessage}
                 disabled={loading || !input.trim()}
-                className="absolute bottom-2 right-2 p-3 bg-gradient-to-br from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-full shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-30"
+                className="p-2.5 bg-gradient-to-br from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-lg shadow-sm hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-30"
               >
                 <Send size={16} />
               </button>
-            </div>
-            <div className="mt-3 text-xs text-gray-500 text-center">
-              Press Enter to send, Shift+Enter for new line
             </div>
           </div>
         </div>

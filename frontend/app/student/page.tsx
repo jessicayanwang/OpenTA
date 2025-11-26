@@ -239,7 +239,12 @@ export default function Home() {
                   <button
                     key={i}
                     onClick={() => setInput(starter)}
-                    className="p-5 text-left bg-white rounded-2xl shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-30 border border-gray-100"
+                    className={`p-5 text-left rounded-2xl shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-30 ${
+                      i % 4 === 0 ? 'bg-blue-50/50 border border-blue-100 hover:bg-blue-50' :
+                      i % 4 === 1 ? 'bg-orange-50/50 border border-orange-100 hover:bg-orange-50' :
+                      i % 4 === 2 ? 'bg-green-50/50 border border-green-100 hover:bg-green-50' :
+                      'bg-purple-50/50 border border-purple-100 hover:bg-purple-50'
+                    }`}
                   >
                     <div className="text-sm text-gray-700 leading-relaxed">{starter}</div>
                   </button>

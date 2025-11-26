@@ -134,7 +134,11 @@ export default function FAQPage() {
               {faqItems.map((item, index) => (
                 <div
                   key={index}
-                  className="bg-white rounded-xl border border-gray-200 overflow-hidden transition-all hover:border-gray-300"
+                  className={`rounded-xl border overflow-hidden transition-all ${
+                    index % 3 === 0 ? 'bg-blue-50/30 border-blue-100 hover:border-blue-200' :
+                    index % 3 === 1 ? 'bg-orange-50/30 border-orange-100 hover:border-orange-200' :
+                    'bg-green-50/30 border-green-100 hover:border-green-200'
+                  }`}
                 >
                   <button
                     onClick={() => setExpandedIndex(expandedIndex === index ? null : index)}

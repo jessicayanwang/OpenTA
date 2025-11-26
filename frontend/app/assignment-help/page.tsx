@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { MessageCircle, HelpCircle, BookOpen, FileText, User } from 'lucide-react'
+import { MessageCircle, HelpCircle, BookOpen, FileText, User, GraduationCap, Bot, Lightbulb, Library, ArrowRight, Paperclip, Rocket, Wrench, Bug, Code2, Eye } from 'lucide-react'
 import Logo from '@/components/Logo'
 
 interface Citation {
@@ -26,6 +26,7 @@ interface Message {
   userContext?: string
   problemNumber?: string
   response?: AssignmentHelpResponse
+  suggestedQuestions?: string[]
 }
 
 // Mock data for demonstration
@@ -227,10 +228,10 @@ const PROBLEMS = [
 ]
 
 const HINT_SUGGESTIONS = [
-  { label: '🚀 How do I start?', type: 'getting_started' },
-  { label: '🐛 My code has an error', type: 'debugging' },
-  { label: '💭 What algorithm should I use?', type: 'algorithm' },
-  { label: '👀 Can you review my code?', type: 'code_review' },
+  { label: 'How do I start?', type: 'getting_started', icon: 'rocket' },
+  { label: 'My code has an error', type: 'debugging', icon: 'bug' },
+  { label: 'What algorithm should I use?', type: 'algorithm', icon: 'code' },
+  { label: 'Can you review my code?', type: 'code_review', icon: 'eye' },
 ]
 
 export default function AssignmentHelpPage() {
@@ -238,7 +239,7 @@ export default function AssignmentHelpPage() {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'system',
-      content: `👋 **Welcome to the Assignment Helper!**
+      content: `**Welcome to the Assignment Helper!**
 
 I'm here to guide you through your assignments using the Socratic method. I won't give you direct answers, but I'll help you:
 
@@ -253,9 +254,10 @@ I'm here to guide you through your assignments using the Socratic method. I won'
 - Describe errors you're encountering
 - Request help with algorithms or concepts
 
-Let's work through this together! 🎓
+Let's work through this together!
 
 **Quick tip:** Select your problem from the dropdown above, then start asking questions!`,
+      suggestedQuestions: ['How do I start?', 'My code has an error', 'What algorithm should I use?', 'Can you review my code?']
     }
   ])
   const [input, setInput] = useState('')
@@ -430,61 +432,54 @@ Let's work through this together! 🎓
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
-        <div className="px-4 py-3 border-b border-gray-200 bg-white">
-          <div className="max-w-4xl mx-auto">
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <h1 className="text-2xl font-normal text-gray-900">Assignment Helper</h1>
-                <p className="text-gray-600 text-sm">Get Socratic guidance on your assignments</p>
+        <div className="px-4 py-2 border-b border-gray-200 bg-white">
+          <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4 flex-1">
+              <h1 className="text-xl font-normal text-gray-900 whitespace-nowrap">Assignment Helper</h1>
+              <div className="flex items-center gap-2 flex-1">
+                <label className="text-xs text-gray-600 whitespace-nowrap">Problem:</label>
+                <select
+                  value={selectedProblem}
+                  onChange={(e) => setSelectedProblem(e.target.value)}
+                  className="flex-1 max-w-xs border border-gray-300 rounded-lg px-3 py-1.5 text-sm"
+                >
+                  <option value="">Select problem...</option>
+                  {PROBLEMS.map(problem => (
+                    <option key={problem.id} value={problem.id}>
+                      {problem.name}
+                    </option>
+                  ))}
+                </select>
               </div>
-              <label className="flex items-center gap-2 cursor-pointer text-sm">
-                <input
-                  type="checkbox"
-                  checked={useMockData}
-                  onChange={(e) => setUseMockData(e.target.checked)}
-                  className="rounded"
-                />
-                <span className="text-gray-700">Demo mode</span>
-              </label>
             </div>
-            
-            <div className="flex items-center gap-2">
-              <label className="text-xs text-gray-600 whitespace-nowrap">Problem:</label>
-              <select
-                value={selectedProblem}
-                onChange={(e) => setSelectedProblem(e.target.value)}
-                className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm"
-              >
-                <option value="">Select problem...</option>
-                {PROBLEMS.map(problem => (
-                  <option key={problem.id} value={problem.id}>
-                    {problem.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <label className="flex items-center gap-2 cursor-pointer text-xs">
+              <input
+                type="checkbox"
+                checked={useMockData}
+                onChange={(e) => setUseMockData(e.target.checked)}
+                className="rounded"
+              />
+              <span className="text-gray-700 whitespace-nowrap">Demo mode</span>
+            </label>
           </div>
         </div>
 
         {/* Chat Container */}
-        <div className="flex-1 overflow-y-auto p-6">
-          <div className="max-w-4xl mx-auto space-y-4">
+        <div className="flex-1 overflow-y-auto bg-[#f7f7f5] py-4">
+          <div className="max-w-4xl mx-auto px-8 space-y-3">
             {messages.map((message, index) => (
               <div key={index}>
                 {/* User Message */}
                 {message.role === 'user' && (
-                  <div className="ml-12">
-                    <div className="bg-green-100 p-4 rounded-lg">
-                      <div className="font-semibold mb-1 text-sm text-gray-600">
-                        👤 You {message.problemNumber && `• ${message.problemNumber}`}
-                      </div>
-                      <div className="text-gray-800 whitespace-pre-wrap">
+                  <div className="flex justify-end mb-4">
+                    <div className="bg-gradient-to-br from-orange-500 to-orange-600 px-4 py-2.5 rounded-2xl max-w-lg shadow-sm">
+                      <div className="text-white text-sm leading-relaxed whitespace-pre-wrap">
                         {message.content}
                       </div>
                       {message.userContext && (
-                        <div className="mt-3 pt-3 border-t border-green-200">
-                          <div className="text-xs font-semibold text-gray-600 mb-1">Code/Context:</div>
-                          <pre className="bg-gray-900 text-gray-100 p-3 rounded text-xs overflow-x-auto">
+                        <div className="mt-2 pt-2 border-t border-orange-400">
+                          <div className="text-xs font-medium text-orange-100 mb-1">Code:</div>
+                          <pre className="bg-black/20 text-white p-2 rounded text-xs overflow-x-auto">
                             {message.userContext}
                           </pre>
                         </div>
@@ -495,62 +490,85 @@ Let's work through this together! 🎓
 
                 {/* System Message */}
                 {message.role === 'system' && (
-                  <div className="bg-teal-50 border-2 border-teal-200 p-4 rounded-lg">
-                    <div className="font-semibold mb-2 text-sm text-teal-800">
-                      🎓 Assignment Helper
+                  <div className="flex gap-3 mb-4">
+                    <div className="w-8 h-8 bg-gradient-to-br from-orange-400 to-orange-600 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm">
+                      <GraduationCap size={16} className="text-white" />
                     </div>
-                    <div className="text-gray-800 whitespace-pre-wrap">
-                      {message.content}
+                    <div className="flex-1 max-w-lg">
+                      <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 shadow-sm">
+                        <div className="text-gray-800 text-sm leading-relaxed whitespace-pre-wrap">
+                          {message.content}
+                        </div>
+                        
+                        {/* Suggested Questions */}
+                        {message.suggestedQuestions && message.suggestedQuestions.length > 0 && (
+                          <div className="mt-3 pt-3 border-t border-gray-200">
+                            <div className="text-xs text-gray-500 mb-2">Suggested:</div>
+                            <div className="flex flex-wrap gap-2">
+                              {message.suggestedQuestions.map((question, idx) => (
+                                <button
+                                  key={idx}
+                                  onClick={() => setInput(question)}
+                                  className="text-xs text-gray-700 hover:text-orange-600 bg-gray-50 hover:bg-orange-50 px-3 py-1.5 rounded-full transition-all duration-200 border border-gray-200 hover:border-orange-300 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-30"
+                                >
+                                  {question}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )}
 
                 {/* Assistant Message with Response */}
                 {message.role === 'assistant' && message.response && (
-                  <div className="mr-12">
-                    <div className="bg-gray-50 p-4 rounded-lg border-l-4 border-green-500">
-                      <div className="font-semibold mb-3 text-sm text-gray-600">
-                        🤖 OpenTA Helper
-                      </div>
+                  <div className="flex gap-3 mb-4">
+                    <div className="w-8 h-8 bg-gradient-to-br from-orange-400 to-orange-600 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm">
+                      <Bot size={16} className="text-white" />
+                    </div>
+                    <div className="flex-1 max-w-lg">
+                      <div className="bg-white border border-gray-200 rounded-xl px-4 py-3 shadow-sm">
 
                       {/* Guidance */}
-                      <div className="mb-4">
-                        <div className="text-sm font-bold text-green-800 mb-2">💡 Guidance:</div>
-                        <div className="text-gray-800 whitespace-pre-wrap text-sm">
+                      <div className="mb-3">
+                        <div className="text-xs font-semibold text-orange-600 mb-1.5 flex items-center gap-1"><Lightbulb size={12} /> Guidance:</div>
+                        <div className="text-gray-800 whitespace-pre-wrap text-sm leading-relaxed">
                           {message.response.guidance}
                         </div>
                       </div>
 
                       {/* Collapsible Details */}
-                      <details className="mb-3">
-                        <summary className="text-sm font-bold text-blue-800 cursor-pointer hover:text-blue-600">
-                          📚 Key Concepts ({message.response.concepts.length})
+                      <details className="mb-2">
+                        <summary className="text-xs font-semibold text-gray-600 cursor-pointer hover:text-orange-600 flex items-center gap-1">
+                          <Library size={12} /> Key Concepts ({message.response.concepts.length})
                         </summary>
-                        <div className="mt-2 ml-4 space-y-1">
+                        <div className="mt-1.5 ml-3 space-y-0.5">
                           {message.response.concepts.map((concept, idx) => (
-                            <div key={idx} className="text-sm text-gray-700">• {concept}</div>
+                            <div key={idx} className="text-xs text-gray-700">• {concept}</div>
                           ))}
                         </div>
                       </details>
 
-                      <details className="mb-3">
-                        <summary className="text-sm font-bold text-purple-800 cursor-pointer hover:text-purple-600">
-                          📖 Resources ({message.response.resources.length})
+                      <details className="mb-2">
+                        <summary className="text-xs font-semibold text-gray-600 cursor-pointer hover:text-orange-600 flex items-center gap-1">
+                          <BookOpen size={12} /> Resources ({message.response.resources.length})
                         </summary>
-                        <div className="mt-2 ml-4 space-y-1">
+                        <div className="mt-1.5 ml-3 space-y-0.5">
                           {message.response.resources.map((resource, idx) => (
-                            <div key={idx} className="text-sm text-gray-700">• {resource}</div>
+                            <div key={idx} className="text-xs text-gray-700">• {resource}</div>
                           ))}
                         </div>
                       </details>
 
-                      <details className="mb-3">
-                        <summary className="text-sm font-bold text-orange-800 cursor-pointer hover:text-orange-600">
-                          ➡️ Next Steps ({message.response.next_steps.length})
+                      <details className="mb-2">
+                        <summary className="text-xs font-semibold text-gray-600 cursor-pointer hover:text-orange-600 flex items-center gap-1">
+                          <ArrowRight size={12} /> Next Steps ({message.response.next_steps.length})
                         </summary>
-                        <div className="mt-2 ml-4 space-y-1">
+                        <div className="mt-1.5 ml-3 space-y-0.5">
                           {message.response.next_steps.map((step, idx) => (
-                            <div key={idx} className="text-sm text-gray-700">{idx + 1}. {step}</div>
+                            <div key={idx} className="text-xs text-gray-700">{idx + 1}. {step}</div>
                           ))}
                         </div>
                       </details>
@@ -558,34 +576,34 @@ Let's work through this together! 🎓
                       {/* Citations */}
                       {message.response.citations && message.response.citations.length > 0 && (
                         <details>
-                          <summary className="text-sm font-bold text-gray-800 cursor-pointer hover:text-gray-600">
-                            📎 Citations ({message.response.citations.length})
+                          <summary className="text-xs font-semibold text-gray-600 cursor-pointer hover:text-orange-600 flex items-center gap-1">
+                            <Paperclip size={12} /> Citations ({message.response.citations.length})
                           </summary>
-                          <div className="mt-2 space-y-2">
+                          <div className="mt-1.5 flex flex-wrap gap-1.5">
                             {message.response.citations.map((citation, idx) => (
-                              <div key={idx} className="bg-white border border-gray-200 rounded p-3 text-xs">
-                                <div className="font-semibold text-gray-800 mb-1">
-                                  {citation.source} - {citation.section}
-                                </div>
-                                <div className="text-gray-600">{citation.text}</div>
-                              </div>
+                              <span key={idx} className="inline-flex items-center gap-1 px-2 py-1 bg-orange-50 text-orange-700 text-xs font-medium rounded-full border border-orange-200">
+                                {citation.source} • {citation.section}
+                              </span>
                             ))}
                           </div>
                         </details>
                       )}
+                      </div>
                     </div>
                   </div>
                 )}
 
                 {/* Simple Assistant Message (errors, etc) */}
                 {message.role === 'assistant' && !message.response && (
-                  <div className="mr-12">
-                    <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded-lg">
-                      <div className="font-semibold mb-1 text-sm text-gray-600">
-                        🤖 OpenTA Helper
-                      </div>
-                      <div className="text-gray-800">
+                  <div className="flex gap-3 mb-4">
+                    <div className="w-8 h-8 bg-gradient-to-br from-orange-400 to-orange-600 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm">
+                      <Bot size={16} className="text-white" />
+                    </div>
+                    <div className="flex-1 max-w-lg">
+                      <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 shadow-sm">
+                        <div className="text-gray-800 text-sm">
                         {message.content}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -594,18 +612,20 @@ Let's work through this together! 🎓
             ))}
             
             {loading && (
-              <div className="mr-12">
-                <div className="bg-gray-100 p-4 rounded-lg animate-pulse">
-                  <div className="font-semibold mb-1 text-sm text-gray-600">
-                    🤖 OpenTA Helper
-                  </div>
-                  <div className="text-gray-600 flex items-center gap-2">
-                    <span>Analyzing your question</span>
-                    <span className="flex gap-1">
-                      <span className="w-2 h-2 bg-green-400 rounded-full animate-bounce" style={{animationDelay: '0ms'}}></span>
-                      <span className="w-2 h-2 bg-green-400 rounded-full animate-bounce" style={{animationDelay: '150ms'}}></span>
-                      <span className="w-2 h-2 bg-green-400 rounded-full animate-bounce" style={{animationDelay: '300ms'}}></span>
-                    </span>
+              <div className="flex gap-3 mb-4">
+                <div className="w-8 h-8 bg-gradient-to-br from-orange-400 to-orange-600 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm">
+                  <span className="text-white text-sm">🤖</span>
+                </div>
+                <div className="flex-1 max-w-lg">
+                  <div className="bg-white border border-gray-200 rounded-xl px-4 py-3 shadow-sm">
+                    <div className="flex items-center gap-3 text-gray-600">
+                      <div className="flex gap-1.5">
+                        <span className="w-2 h-2 bg-orange-500 rounded-full animate-bounce"></span>
+                        <span className="w-2 h-2 bg-orange-500 rounded-full animate-bounce" style={{animationDelay: '150ms'}}></span>
+                        <span className="w-2 h-2 bg-orange-500 rounded-full animate-bounce" style={{animationDelay: '300ms'}}></span>
+                      </div>
+                      <span className="text-sm">Thinking...</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -615,30 +635,14 @@ Let's work through this together! 🎓
         </div>
 
         {/* Input Area - Fixed at bottom */}
-        <div className="border-t border-gray-200 bg-white p-3">
-          <div className="max-w-4xl mx-auto space-y-2">
-            {/* Quick Hints */}
-            <div>
-              <div className="text-xs font-semibold text-gray-500 mb-1.5">💡 Quick Hints:</div>
-            <div className="flex flex-wrap gap-1.5">
-              {HINT_SUGGESTIONS.map((hint) => (
-                <button
-                  key={hint.type}
-                  onClick={() => handleHintClick(hint.type)}
-                  className="px-2.5 py-1 bg-green-50 hover:bg-green-100 text-green-800 rounded-full text-xs transition"
-                >
-                  {hint.label}
-                </button>
-              ))}
-              </div>
-            </div>
-
+        <div className="border-t border-gray-200 bg-white px-4 py-2">
+          <div className="max-w-4xl mx-auto">
             <div className="space-y-2">
           {/* Context/Code Input (Collapsible) */}
           {showContextBox && (
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">
-                📋 Code snippet or additional context (optional):
+              <label className="text-sm font-medium text-gray-700 flex items-center gap-1.5">
+                <FileText size={14} /> Code snippet or additional context (optional):
               </label>
               <textarea
                 value={contextInput}
@@ -651,37 +655,34 @@ Let's work through this together! 🎓
           )}
 
           {/* Main Input */}
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
             <button
               onClick={() => setShowContextBox(!showContextBox)}
-              className={`px-3 py-2 rounded-lg transition text-sm ${
+              className={`p-2.5 rounded-lg transition text-sm ${
                 showContextBox 
-                  ? 'bg-green-600 text-white' 
+                  ? 'bg-orange-600 text-white' 
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
+              title="Add code snippet"
             >
-              ➕ Code
+              ➕
             </button>
-            <textarea
+            <input
+              type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Ask a question or describe your problem..."
-              rows={2}
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 resize-none text-sm"
+              className="flex-1 px-4 py-2.5 bg-white border border-gray-300 hover:border-gray-400 focus:border-orange-500 rounded-lg text-gray-900 text-sm placeholder:text-gray-500 shadow-sm hover:shadow focus:shadow transition-all duration-200 focus:outline-none focus:ring-1 focus:ring-orange-500"
             />
             <button
               onClick={sendMessage}
               disabled={loading || !input.trim()}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition font-medium text-sm"
+              className="p-2.5 bg-gradient-to-br from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-lg shadow-sm hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-30"
             >
-              Send
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
             </button>
           </div>
-          
-            <div className="text-xs text-gray-500">
-              💡 Tip: Press Enter to send, Shift+Enter for new line. Click "➕ Code" to share code snippets.
-            </div>
             </div>
           </div>
         </div>

@@ -167,7 +167,7 @@ export default function StudyPlanPage() {
             <p className="text-gray-600 text-lg">Create a personalized plan based on your goals, schedule, and current level</p>
           </div>
 
-          <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
+          <div className="bg-blue-50/30 rounded-xl border border-blue-100 p-6 mb-6">
             <div className="space-y-4">
               <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Goal scope</label>
@@ -284,7 +284,7 @@ export default function StudyPlanPage() {
           </div>
 
           {/* Output */}
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <div className="bg-orange-50/30 rounded-xl border border-orange-100 p-6">
             {!plan && !loading && (
               <div className="text-gray-600">Fill the form and click Generate to see your plan here.</div>
             )}
@@ -292,7 +292,7 @@ export default function StudyPlanPage() {
             {plan && (
               <div className="space-y-6">
                 <div>
-                  <div className="text-2xl font-bold text-indigo-900">{plan.title}</div>
+                  <div className="text-2xl font-normal text-gray-900">{plan.title}</div>
                   <div className="text-gray-600 mt-1">{plan.summary}</div>
                 </div>
 

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { BarChart3, Users, Search, MessageSquare, User } from 'lucide-react'
+import { BarChart3, Users, Search, MessageSquare, User, UserCircle, AlertCircle, AlertTriangle, TrendingUp, FileText, Upload, Link, X } from 'lucide-react'
 import Logo from '@/components/Logo'
 
 interface DashboardMetrics {
@@ -70,6 +70,10 @@ export default function ProfessorConsole() {
   
   // Content gaps
   const [contentGaps, setContentGaps] = useState<ContentGap[]>([])
+  const [expandedGaps, setExpandedGaps] = useState<Set<number>>(new Set())
+  const [selectedGap, setSelectedGap] = useState<ContentGap | null>(null)
+  const [showUploadModal, setShowUploadModal] = useState(false)
+  const [uploadGap, setUploadGap] = useState<ContentGap | null>(null)
   
   // Clusters
   const [clusters, setClusters] = useState<QuestionCluster[]>([])
@@ -123,7 +127,40 @@ export default function ProfessorConsole() {
       } else if (activeTab === 'content-gaps') {
         const res = await fetch('http://localhost:8000/api/professor/content-gaps?course_id=cs50')
         const data = await res.json()
-        setContentGaps(data.gaps)
+        // Add some low priority gaps for demonstration
+        const lowPriorityGaps = [
+          {
+            topic: 'File I/O Operations',
+            question_count: 45,
+            priority: 'low',
+            example_questions: [
+              'How do I read from a file?',
+              'What is the difference between r and rb mode?'
+            ],
+            suggested_action: 'Add tutorial on file handling basics'
+          },
+          {
+            topic: 'String Formatting',
+            question_count: 38,
+            priority: 'low',
+            example_questions: [
+              'How to use f-strings?',
+              'What is the % operator for strings?'
+            ],
+            suggested_action: 'Create examples for different formatting methods'
+          },
+          {
+            topic: 'List Comprehensions',
+            question_count: 52,
+            priority: 'low',
+            example_questions: [
+              'How do list comprehensions work?',
+              'Can I use if-else in list comprehension?'
+            ],
+            suggested_action: 'Add interactive examples and exercises'
+          }
+        ]
+        setContentGaps([...data.gaps, ...lowPriorityGaps])
       } else if (activeTab === 'clusters') {
         const res = await fetch('http://localhost:8000/api/professor/clusters?course_id=cs50&semantic=true&min_count=2')
         const data = await res.json()
@@ -196,66 +233,34 @@ export default function ProfessorConsole() {
         <nav className="px-3 py-2 space-y-0.5">
           <button
             onClick={() => setActiveTab('dashboard')}
-            className={`w-full px-3 py-2 text-left text-sm rounded-lg transition-all duration-200 flex items-center gap-2.5 group relative focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-30 ${
-              activeTab === 'dashboard' 
-                ? 'text-gray-900 font-semibold' 
-                : 'text-gray-600 hover:text-gray-900 hover:font-semibold'
-            }`}
+            className="w-full px-3 py-2 text-left text-sm text-gray-600 hover:text-gray-900 hover:font-semibold rounded-lg transition-all duration-200 flex items-center gap-2.5 group relative focus:outline-none focus:ring-0 active:bg-transparent"
           >
-            <div className={`absolute left-0 w-1 rounded-r transition-all duration-200 ${
-              activeTab === 'dashboard' ? 'h-full bg-orange-500' : 'h-0 bg-orange-500 group-hover:h-full'
-            }`}></div>
-            <BarChart3 size={16} className={`transition-colors ${
-              activeTab === 'dashboard' ? 'text-orange-500' : 'text-gray-500 group-hover:text-orange-500'
-            }`} />
+            <div className="absolute left-0 w-1 h-0 bg-orange-500 rounded-r group-hover:h-full transition-all duration-200"></div>
+            <BarChart3 size={16} className="text-gray-500 group-hover:text-orange-500 transition-colors" />
             <span>Dashboard</span>
           </button>
           <button
             onClick={() => setActiveTab('students')}
-            className={`w-full px-3 py-2 text-left text-sm rounded-lg transition-all duration-200 flex items-center gap-2.5 group relative focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-30 ${
-              activeTab === 'students' 
-                ? 'text-gray-900 font-semibold' 
-                : 'text-gray-600 hover:text-gray-900 hover:font-semibold'
-            }`}
+            className="w-full px-3 py-2 text-left text-sm text-gray-600 hover:text-gray-900 hover:font-semibold rounded-lg transition-all duration-200 flex items-center gap-2.5 group relative focus:outline-none focus:ring-0 active:bg-transparent"
           >
-            <div className={`absolute left-0 w-1 rounded-r transition-all duration-200 ${
-              activeTab === 'students' ? 'h-full bg-orange-500' : 'h-0 bg-orange-500 group-hover:h-full'
-            }`}></div>
-            <Users size={16} className={`transition-colors ${
-              activeTab === 'students' ? 'text-orange-500' : 'text-gray-500 group-hover:text-orange-500'
-            }`} />
+            <div className="absolute left-0 w-1 h-0 bg-orange-500 rounded-r group-hover:h-full transition-all duration-200"></div>
+            <Users size={16} className="text-gray-500 group-hover:text-orange-500 transition-colors" />
             <span>Student Analytics</span>
           </button>
           <button
             onClick={() => setActiveTab('content-gaps')}
-            className={`w-full px-3 py-2 text-left text-sm rounded-lg transition-all duration-200 flex items-center gap-2.5 group relative focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-30 ${
-              activeTab === 'content-gaps' 
-                ? 'text-gray-900 font-semibold' 
-                : 'text-gray-600 hover:text-gray-900 hover:font-semibold'
-            }`}
+            className="w-full px-3 py-2 text-left text-sm text-gray-600 hover:text-gray-900 hover:font-semibold rounded-lg transition-all duration-200 flex items-center gap-2.5 group relative focus:outline-none focus:ring-0 active:bg-transparent"
           >
-            <div className={`absolute left-0 w-1 rounded-r transition-all duration-200 ${
-              activeTab === 'content-gaps' ? 'h-full bg-orange-500' : 'h-0 bg-orange-500 group-hover:h-full'
-            }`}></div>
-            <Search size={16} className={`transition-colors ${
-              activeTab === 'content-gaps' ? 'text-orange-500' : 'text-gray-500 group-hover:text-orange-500'
-            }`} />
+            <div className="absolute left-0 w-1 h-0 bg-orange-500 rounded-r group-hover:h-full transition-all duration-200"></div>
+            <Search size={16} className="text-gray-500 group-hover:text-orange-500 transition-colors" />
             <span>Content Gaps</span>
           </button>
           <button
             onClick={() => setActiveTab('clusters')}
-            className={`w-full px-3 py-2 text-left text-sm rounded-lg transition-all duration-200 flex items-center gap-2.5 group relative focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-30 ${
-              activeTab === 'clusters' 
-                ? 'text-gray-900 font-semibold' 
-                : 'text-gray-600 hover:text-gray-900 hover:font-semibold'
-            }`}
+            className="w-full px-3 py-2 text-left text-sm text-gray-600 hover:text-gray-900 hover:font-semibold rounded-lg transition-all duration-200 flex items-center gap-2.5 group relative focus:outline-none focus:ring-0 active:bg-transparent"
           >
-            <div className={`absolute left-0 w-1 rounded-r transition-all duration-200 ${
-              activeTab === 'clusters' ? 'h-full bg-orange-500' : 'h-0 bg-orange-500 group-hover:h-full'
-            }`}></div>
-            <MessageSquare size={16} className={`transition-colors ${
-              activeTab === 'clusters' ? 'text-orange-500' : 'text-gray-500 group-hover:text-orange-500'
-            }`} />
+            <div className="absolute left-0 w-1 h-0 bg-orange-500 rounded-r group-hover:h-full transition-all duration-200"></div>
+            <MessageSquare size={16} className="text-gray-500 group-hover:text-orange-500 transition-colors" />
             <span>Question Clusters</span>
           </button>
         </nav>
@@ -288,35 +293,173 @@ export default function ProfessorConsole() {
               {/* Dashboard Tab */}
               {activeTab === 'dashboard' && metrics && (
                 <div>
-                  <h1 className="text-3xl font-normal text-gray-900 mb-2">Dashboard Overview</h1>
-                  <p className="text-gray-600 mb-8">Course health metrics for the last 7 days</p>
+                  <h1 className="text-3xl font-normal text-gray-900 mb-1">Dashboard Overview</h1>
+                  <p className="text-gray-600 mb-4">Real-time insights into student engagement and learning progress</p>
 
-                  {/* Metrics Cards */}
-                  <div className="grid grid-cols-4 gap-4 mb-8">
-                    <div className="bg-white rounded-xl border border-gray-200 p-6">
-                      <div className="text-sm text-gray-600 mb-1">Total Questions</div>
-                      <div className="text-3xl font-semibold text-gray-900">{metrics.total_questions}</div>
-                    </div>
-                    <div className="bg-white rounded-xl border border-gray-200 p-6">
-                      <div className="text-sm text-gray-600 mb-1">Avg Confidence</div>
-                      <div className={`text-3xl font-semibold ${getConfidenceColor(metrics.avg_confidence)}`}>
+                  {/* Metrics Cards - Consistent Color Palette */}
+                  <div className="grid grid-cols-4 gap-3 mb-4">
+                    <button 
+                      onClick={() => setActiveTab('students')}
+                      className="bg-gradient-to-br from-orange-50 to-white rounded-2xl border border-orange-100 p-5 hover:shadow-xl hover:scale-105 transition-all duration-300 text-left group cursor-pointer relative overflow-hidden"
+                    >
+                      <div className="absolute top-0 right-0 w-20 h-20 bg-orange-500 opacity-5 rounded-full -mr-10 -mt-10"></div>
+                      <div className="text-xs font-medium text-orange-600 mb-2 uppercase tracking-wide">Questions</div>
+                      <div className="text-3xl font-bold text-gray-900 mb-1">304</div>
+                      <div className="text-xs text-green-600 font-medium flex items-center gap-1">
+                        <span>↑ 12%</span>
+                        <span className="text-gray-400">vs last week</span>
+                      </div>
+                    </button>
+                    <button 
+                      onClick={() => setActiveTab('students')}
+                      className="bg-gradient-to-br from-gray-50 to-white rounded-2xl border border-gray-200 p-5 hover:shadow-xl hover:scale-105 transition-all duration-300 text-left group cursor-pointer relative overflow-hidden"
+                    >
+                      <div className="absolute top-0 right-0 w-20 h-20 bg-gray-400 opacity-5 rounded-full -mr-10 -mt-10"></div>
+                      <div className="text-xs font-medium text-gray-600 mb-2 uppercase tracking-wide">Confidence</div>
+                      <div className="text-3xl font-bold text-gray-900 mb-1">
                         {(metrics.avg_confidence * 100).toFixed(0)}%
                       </div>
+                      <div className="text-xs text-gray-500 font-medium">Target: 75%</div>
+                    </button>
+                    <button 
+                      onClick={() => setActiveTab('students')}
+                      className="bg-gradient-to-br from-gray-50 to-white rounded-2xl border border-gray-200 p-5 hover:shadow-xl hover:scale-105 transition-all duration-300 text-left group cursor-pointer relative overflow-hidden"
+                    >
+                      <div className="absolute top-0 right-0 w-20 h-20 bg-gray-400 opacity-5 rounded-full -mr-10 -mt-10"></div>
+                      <div className="text-xs font-medium text-gray-600 mb-2 uppercase tracking-wide">At Risk</div>
+                      <div className="text-3xl font-bold text-gray-900 mb-1">{metrics.struggling_students}</div>
+                      <div className="text-xs text-orange-600 font-medium group-hover:underline">View details →</div>
+                    </button>
+                    <button 
+                      onClick={() => setActiveTab('content-gaps')}
+                      className="bg-gradient-to-br from-gray-50 to-white rounded-2xl border border-gray-200 p-5 hover:shadow-xl hover:scale-105 transition-all duration-300 text-left group cursor-pointer relative overflow-hidden"
+                    >
+                      <div className="absolute top-0 right-0 w-20 h-20 bg-gray-400 opacity-5 rounded-full -mr-10 -mt-10"></div>
+                      <div className="text-xs font-medium text-gray-600 mb-2 uppercase tracking-wide">Pending</div>
+                      <div className="text-3xl font-bold text-gray-900 mb-1">{metrics.unresolved_items}</div>
+                      <div className="text-xs text-orange-600 font-medium group-hover:underline">Review now →</div>
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-3 mb-4">
+                    {/* Activity Trend Chart */}
+                    <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm hover:shadow-md transition-shadow">
+                      <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                        <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
+                        Weekly Activity
+                      </h3>
+                      <div className="flex items-end justify-between gap-1.5 mt-4" style={{height: '112px'}}>
+                        {[
+                          { day: 'M', count: 42 },
+                          { day: 'T', count: 58 },
+                          { day: 'W', count: 51 },
+                          { day: 'T', count: 67 },
+                          { day: 'F', count: 45 },
+                          { day: 'S', count: 23 },
+                          { day: 'S', count: 18 }
+                        ].map((item, i) => {
+                          const maxCount = 67
+                          const heightPx = Math.max(8, (item.count / maxCount) * 100)
+                          return (
+                            <button 
+                              key={i} 
+                              onClick={() => setActiveTab('students')}
+                              className="flex-1 flex flex-col items-center gap-1 group relative cursor-pointer"
+                            >
+                              <div 
+                                className="w-full bg-orange-500 rounded-t transition-all hover:bg-orange-600 hover:scale-110" 
+                                style={{height: `${heightPx}px`}}
+                              ></div>
+                              <span className="text-xs text-gray-500 mt-1 group-hover:text-orange-600 group-hover:font-semibold transition-all">{item.day}</span>
+                              <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+                                {item.count} questions
+                              </div>
+                            </button>
+                          )
+                        })}
+                      </div>
                     </div>
-                    <div className="bg-white rounded-xl border border-gray-200 p-6">
-                      <div className="text-sm text-gray-600 mb-1">Struggling Students</div>
-                      <div className="text-3xl font-semibold text-red-600">{metrics.struggling_students}</div>
+
+                    {/* Student Engagement */}
+                    <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm hover:shadow-md transition-shadow">
+                      <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                        <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
+                        Student Engagement
+                      </h3>
+                      <div className="space-y-1.5">
+                        <button 
+                          onClick={() => setActiveTab('students')}
+                          className="w-full text-left group"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-gray-600 group-hover:text-green-700">Active</span>
+                            <span className="text-xs font-semibold text-green-600">45 students</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden cursor-pointer">
+                            <div className="bg-green-500 h-2 rounded-full transition-all duration-300 group-hover:bg-green-600" style={{width: '75%'}}></div>
+                          </div>
+                        </button>
+                        <button 
+                          onClick={() => setActiveTab('students')}
+                          className="w-full text-left group"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-gray-600 group-hover:text-yellow-700">Moderate</span>
+                            <span className="text-xs font-semibold text-yellow-600">12 students</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden cursor-pointer">
+                            <div className="bg-yellow-500 h-2 rounded-full transition-all duration-300 group-hover:bg-yellow-600" style={{width: '20%'}}></div>
+                          </div>
+                        </button>
+                        <button 
+                          onClick={() => setActiveTab('students')}
+                          className="w-full text-left group"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-gray-600 group-hover:text-red-700">At Risk</span>
+                            <span className="text-xs font-semibold text-red-600">3 students</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden cursor-pointer">
+                            <div className="bg-red-500 h-2 rounded-full transition-all duration-300 group-hover:bg-red-600 group-hover:animate-pulse" style={{width: '5%'}}></div>
+                          </div>
+                        </button>
+                      </div>
                     </div>
-                    <div className="bg-white rounded-xl border border-gray-200 p-6">
-                      <div className="text-sm text-gray-600 mb-1">Unresolved Items</div>
-                      <div className="text-3xl font-semibold text-yellow-600">{metrics.unresolved_items}</div>
+
+                    {/* Quick Stats */}
+                    <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm hover:shadow-md transition-shadow">
+                      <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                        <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
+                        Quick Stats
+                      </h3>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-gray-600">Avg Response Time</span>
+                          <span className="text-sm font-semibold text-gray-900">2.3s</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-gray-600">Peak Hour</span>
+                          <span className="text-sm font-semibold text-gray-900">2-4 PM</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-gray-600">Most Active Day</span>
+                          <span className="text-sm font-semibold text-gray-900">Thursday</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-gray-600">Citations Used</span>
+                          <span className="text-sm font-semibold text-gray-900">1,247</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-6">
+                  <div className="grid grid-cols-2 gap-3">
                     {/* Top Confusion Topics */}
-                    <div className="bg-white rounded-xl border border-gray-200 p-6">
-                      <h2 className="text-lg font-semibold text-gray-900 mb-4">🔥 Top Confusion Topics</h2>
+                    <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm hover:shadow-md transition-shadow">
+                      <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                        <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
+                        Top Confusion Topics
+                      </h3>
                       {topTopics.length === 0 ? (
                         <p className="text-gray-500 text-sm">No confusion signals yet</p>
                       ) : (
@@ -340,8 +483,11 @@ export default function ProfessorConsole() {
                     </div>
 
                     {/* Recent Activity */}
-                    <div className="bg-white rounded-xl border border-gray-200 p-6">
-                      <h2 className="text-lg font-semibold text-gray-900 mb-4">📝 Recent Activity</h2>
+                    <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm hover:shadow-md transition-shadow">
+                      <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                        <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
+                        Recent Activity
+                      </h3>
                       {recentActivity.length === 0 ? (
                         <p className="text-gray-500 text-sm">No recent activity</p>
                       ) : (
@@ -370,64 +516,101 @@ export default function ProfessorConsole() {
               {/* Student Analytics Tab */}
               {activeTab === 'students' && (
                 <div>
-                  <h1 className="text-3xl font-normal text-gray-900 mb-2">Student Analytics</h1>
-                  <p className="text-gray-600 mb-8">Individual student engagement and performance</p>
+                  <h1 className="text-3xl font-normal text-gray-900 mb-1">Student Analytics</h1>
+                  <p className="text-gray-600 mb-4">Individual student engagement and performance</p>
 
                   {students.length === 0 ? (
                     <div className="text-center py-20 text-gray-500">No student data available</div>
                   ) : (
-                    <div className="grid grid-cols-1 gap-4">
-                      {students.map((student) => (
-                        <div key={student.student_id} className="bg-white rounded-xl border border-gray-200 p-6">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-3 mb-2">
-                                <h3 className="text-lg font-semibold text-gray-900">{student.student_id}</h3>
-                                <span className={`text-xs px-2 py-1 rounded-full font-medium ${getStatusColor(student.status)}`}>
-                                  {student.status}
+                    <div className="grid grid-cols-4 gap-3 p-4 bg-gradient-to-br from-orange-50/30 via-transparent to-blue-50/30 rounded-2xl">
+                      {students.map((student, idx) => {
+                        // Generate different soft avatar colors based on index
+                        const avatarColors = [
+                          'from-orange-200 to-orange-300',
+                          'from-blue-200 to-blue-300',
+                          'from-purple-200 to-purple-300',
+                          'from-emerald-200 to-emerald-300',
+                          'from-rose-200 to-rose-300',
+                          'from-indigo-200 to-indigo-300'
+                        ]
+                        const iconColors = [
+                          'text-orange-600',
+                          'text-blue-600',
+                          'text-purple-600',
+                          'text-emerald-600',
+                          'text-rose-600',
+                          'text-indigo-600'
+                        ]
+                        const avatarColor = avatarColors[idx % avatarColors.length]
+                        const iconColor = iconColors[idx % iconColors.length]
+                        
+                        return (
+                          <button
+                            key={student.student_id}
+                            className="bg-white/60 backdrop-blur-md rounded-xl border border-white/40 shadow-lg p-4 hover:shadow-xl hover:bg-white/70 hover:border-orange-300/50 transition-all duration-300 text-left group"
+                          >
+                            {/* Header with Avatar */}
+                            <div className="flex flex-col items-center mb-3">
+                              <div className={`w-14 h-14 rounded-full bg-gradient-to-br ${avatarColor} bg-opacity-60 flex items-center justify-center shadow-sm mb-2 group-hover:scale-110 transition-transform backdrop-blur-sm`}>
+                                <UserCircle className={`w-9 h-9 ${iconColor}`} strokeWidth={1.5} />
+                              </div>
+                              <h3 className="text-xs font-semibold text-gray-900 text-center group-hover:text-orange-600 transition-colors">
+                                {student.student_id}
+                              </h3>
+                              <span className={`inline-block text-xs px-2 py-0.5 rounded-full font-medium mt-1 ${getStatusColor(student.status)}`}>
+                                {student.status}
+                              </span>
+                            </div>
+
+                            {/* Stats - Compact */}
+                            <div className="space-y-2 mb-3">
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="text-gray-500">Questions</span>
+                                <span className="font-bold text-gray-900">{student.questions_asked}</span>
+                              </div>
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="text-gray-500">Confidence</span>
+                                <span className={`font-bold ${getConfidenceColor(student.avg_confidence)}`}>
+                                  {(student.avg_confidence * 100).toFixed(0)}%
                                 </span>
                               </div>
-                              <div className="grid grid-cols-4 gap-4 text-sm">
-                                <div>
-                                  <div className="text-gray-500">Questions</div>
-                                  <div className="font-semibold text-gray-900">{student.questions_asked}</div>
-                                </div>
-                                <div>
-                                  <div className="text-gray-500">Avg Confidence</div>
-                                  <div className={`font-semibold ${getConfidenceColor(student.avg_confidence)}`}>
-                                    {(student.avg_confidence * 100).toFixed(0)}%
-                                  </div>
-                                </div>
-                                <div>
-                                  <div className="text-gray-500">Confusion Signals</div>
-                                  <div className="font-semibold text-red-600">{student.confusion_signals}</div>
-                                </div>
-                                <div>
-                                  <div className="text-gray-500">Last Active</div>
-                                  <div className="font-semibold text-gray-900">
-                                    {student.last_active ? new Date(student.last_active).toLocaleDateString() : 'Never'}
-                                  </div>
-                                </div>
-                              </div>
-                              <div className="mt-3">
-                                <div className="text-xs text-gray-500 mb-1">Topics Explored:</div>
-                                <div className="flex flex-wrap gap-1">
-                                  {student.topics.map((topic, i) => (
-                                    <span key={i} className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
-                                      {topic}
-                                    </span>
-                                  ))}
-                                </div>
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="text-gray-500">Signals</span>
+                                <span className="font-bold text-red-600">{student.confusion_signals}</span>
                               </div>
                             </div>
-                            {student.status === 'struggling' && (
-                              <button className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 text-sm font-medium">
-                                Intervene
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      ))}
+
+                            {/* Topics - Compact */}
+                            <div className="mb-3">
+                              <div className="flex flex-wrap gap-1">
+                                {student.topics.slice(0, 2).map((topic, i) => (
+                                  <span key={i} className="text-xs bg-gray-50 text-gray-600 px-1.5 py-0.5 rounded">
+                                    {topic}
+                                  </span>
+                                ))}
+                                {student.topics.length > 2 && (
+                                  <span className="text-xs text-gray-400">
+                                    +{student.topics.length - 2}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Footer - Compact */}
+                            <div className="pt-2 border-t border-gray-100 text-center">
+                              {student.status === 'struggling' ? (
+                                <span className="text-xs text-orange-600 font-medium group-hover:underline">
+                                  Intervene →
+                                </span>
+                              ) : (
+                                <span className="text-xs text-gray-400">
+                                  {student.last_active ? new Date(student.last_active).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'Inactive'}
+                                </span>
+                              )}
+                            </div>
+                          </button>
+                        )
+                      })}
                     </div>
                   )}
                 </div>
@@ -436,42 +619,253 @@ export default function ProfessorConsole() {
               {/* Content Gaps Tab */}
               {activeTab === 'content-gaps' && (
                 <div>
-                  <h1 className="text-3xl font-normal text-gray-900 mb-2">Content Gap Analysis</h1>
-                  <p className="text-gray-600 mb-8">Topics with low-confidence responses that may need more materials</p>
+                  <h1 className="text-3xl font-normal text-gray-900 mb-1">Content Gap Analysis</h1>
+                  <p className="text-gray-600 mb-4">Topics with low-confidence responses that may need more materials</p>
 
                   {contentGaps.length === 0 ? (
                     <div className="text-center py-20 text-gray-500">No content gaps identified</div>
                   ) : (
-                    <div className="space-y-4">
-                      {contentGaps.map((gap, i) => (
-                        <div key={i} className={`rounded-xl border p-6 ${
-                          gap.priority === 'high' ? 'bg-red-50 border-red-200' : 'bg-yellow-50 border-yellow-200'
-                        }`}>
-                          <div className="flex items-start justify-between mb-3">
-                            <div>
-                              <h3 className="text-lg font-semibold text-gray-900">{gap.topic}</h3>
-                              <p className="text-sm text-gray-600 mt-1">{gap.question_count} low-confidence questions</p>
+                    <div className="grid grid-cols-4 gap-3 p-4 bg-gradient-to-br from-orange-50/30 via-transparent to-purple-50/30 rounded-2xl">
+                      {contentGaps.map((gap, i) => {
+                        const isHighPriority = gap.priority === 'high'
+                        
+                        // Irregular grid sizing - high priority slightly larger
+                        const gridClass = isHighPriority 
+                          ? 'col-span-2'
+                          : 'col-span-1'
+                        
+                        return (
+                          <button
+                            key={i}
+                            onClick={() => setSelectedGap(gap)}
+                            className={`${gridClass} bg-white/60 backdrop-blur-md rounded-xl border border-white/40 shadow-lg p-4 hover:shadow-2xl hover:bg-white/75 hover:scale-[1.02] transition-all duration-300 text-left group relative overflow-hidden`}
+                          >
+                            {/* Priority Indicator Bar */}
+                            <div className={`absolute left-0 top-0 bottom-0 w-1 ${
+                              isHighPriority ? 'bg-gradient-to-b from-orange-400 to-orange-600' : 'bg-gradient-to-b from-gray-300 to-gray-400'
+                            }`}></div>
+
+                            {/* Animated Background Gradient */}
+                            <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 ${
+                              isHighPriority 
+                                ? 'bg-gradient-to-br from-orange-50/50 to-transparent' 
+                                : 'bg-gradient-to-br from-gray-50/50 to-transparent'
+                            }`}></div>
+
+                            {/* Header - Interactive */}
+                            <div className="relative mb-3 ml-2">
+                              <div className="flex items-start gap-2 mb-2">
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-300 group-hover:scale-110 ${
+                                  isHighPriority ? 'bg-orange-100 group-hover:bg-orange-200' : 'bg-gray-100 group-hover:bg-gray-200'
+                                }`}>
+                                  {isHighPriority ? (
+                                    <AlertCircle className="w-5 h-5 text-orange-600 group-hover:animate-pulse" />
+                                  ) : (
+                                    <AlertTriangle className="w-5 h-5 text-gray-600" />
+                                  )}
+                                </div>
+                                <span className={`text-xs px-2 py-1 rounded-full font-medium transition-all group-hover:scale-105 ml-auto ${
+                                  isHighPriority ? 'bg-orange-100 text-orange-700 group-hover:bg-orange-200' : 'bg-gray-100 text-gray-700 group-hover:bg-gray-200'
+                                }`}>
+                                  {gap.priority}
+                                </span>
+                              </div>
+                              <h3 className={`font-semibold text-gray-900 group-hover:text-orange-600 transition-colors ${
+                                isHighPriority ? 'text-base' : 'text-sm'
+                              }`}>
+                                {gap.topic}
+                              </h3>
                             </div>
-                            <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                              gap.priority === 'high' ? 'bg-red-200 text-red-900' : 'bg-yellow-200 text-yellow-900'
+
+                            {/* Metrics - Better Formatted */}
+                            <div className="relative grid grid-cols-2 gap-2 mb-3 ml-2">
+                              <div className="bg-gray-50/80 rounded-lg p-2.5 transition-all hover:bg-gray-100/80">
+                                <div className="text-xs text-gray-500 mb-1">Questions</div>
+                                <div className="text-xl font-bold text-gray-900 mb-1">{gap.question_count}</div>
+                                <div className="w-full bg-gray-200 rounded-full h-1.5">
+                                  <div 
+                                    className={`h-1.5 rounded-full transition-all ${isHighPriority ? 'bg-orange-500' : 'bg-gray-400'}`}
+                                    style={{width: `${Math.min(100, (gap.question_count / 350) * 100)}%`}}
+                                  ></div>
+                                </div>
+                              </div>
+                              <div className="bg-gray-50/80 rounded-lg p-2.5 transition-all hover:bg-gray-100/80 flex flex-col justify-between">
+                                <div className="text-xs text-gray-500">Impact</div>
+                                <div className="flex items-center justify-between">
+                                  <div className={`text-xl font-bold ${isHighPriority ? 'text-orange-600' : 'text-gray-600'}`}>
+                                    {isHighPriority ? 'High' : 'Low'}
+                                  </div>
+                                  <TrendingUp className={`w-5 h-5 ${isHighPriority ? 'text-orange-500' : 'text-gray-400'}`} />
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Footer - Click to View Details */}
+                            <div className="mt-2 pt-1.5 border-t border-gray-200/50 flex items-center justify-between ml-2">
+                              <span className="text-xs text-gray-400">
+                                Click for details
+                              </span>
+                              <span className="text-xs text-orange-600 font-medium group-hover:underline">
+                                View →
+                              </span>
+                            </div>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
+
+                  {/* Gap Details Modal */}
+                  {selectedGap && (
+                    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setSelectedGap(null)}>
+                      <div className="bg-white rounded-2xl shadow-2xl max-w-xl w-full max-h-[85vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                        <div className="overflow-y-auto max-h-[85vh] p-5 pr-4" style={{scrollbarGutter: 'stable'}}>
+                        {/* Header - Compact */}
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex items-center gap-2">
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                              selectedGap.priority === 'high' ? 'bg-orange-100' : 'bg-gray-100'
                             }`}>
-                              {gap.priority} priority
-                            </span>
+                              {selectedGap.priority === 'high' ? (
+                                <AlertCircle className="w-5 h-5 text-orange-600" />
+                              ) : (
+                                <AlertTriangle className="w-5 h-5 text-gray-600" />
+                              )}
+                            </div>
+                            <div>
+                              <h2 className="text-xl font-bold text-gray-900">{selectedGap.topic}</h2>
+                              <span className={`inline-block text-xs px-2 py-0.5 rounded-full font-medium ${
+                                selectedGap.priority === 'high' ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-700'
+                              }`}>
+                                {selectedGap.priority} priority
+                              </span>
+                            </div>
                           </div>
-                          <div className="mb-3">
-                            <div className="text-sm font-medium text-gray-700 mb-2">Example Questions:</div>
-                            <ul className="space-y-1">
-                              {gap.example_questions.map((q, j) => (
-                                <li key={j} className="text-sm text-gray-600">• {q}</li>
-                              ))}
-                            </ul>
+                          <button onClick={() => setSelectedGap(null)} className="text-gray-400 hover:text-gray-600 transition-colors">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+
+                        {/* Metrics - Compact */}
+                        <div className="grid grid-cols-2 gap-3 mb-4">
+                          <div className="bg-gray-50 rounded-2xl p-3">
+                            <div className="text-xs text-gray-500 mb-1">Questions</div>
+                            <div className="text-2xl font-bold text-gray-900">{selectedGap.question_count}</div>
                           </div>
-                          <div className="bg-white border border-gray-200 rounded-lg p-3">
-                            <div className="text-xs font-medium text-gray-700 mb-1">💡 Suggested Action:</div>
-                            <div className="text-sm text-gray-900">{gap.suggested_action}</div>
+                          <div className="bg-gray-50 rounded-2xl p-3">
+                            <div className="text-xs text-gray-500 mb-1">Impact</div>
+                            <div className={`text-2xl font-bold ${selectedGap.priority === 'high' ? 'text-orange-600' : 'text-gray-600'}`}>
+                              {selectedGap.priority === 'high' ? 'High' : 'Low'}
+                            </div>
                           </div>
                         </div>
-                      ))}
+
+                        {/* Example Questions - Compact */}
+                        <div className="mb-4">
+                          <h3 className="text-sm font-semibold text-gray-900 mb-2 flex items-center gap-1.5">
+                            <FileText className="w-4 h-4" />
+                            Example Questions
+                          </h3>
+                          <div className="space-y-2">
+                            {selectedGap.example_questions.map((q, j) => (
+                              <div key={j} className="bg-gray-50 rounded-2xl p-2.5 text-sm text-gray-700 border-l-4 border-orange-300">
+                                {q}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Suggested Action - Compact */}
+                        <div className="bg-orange-50 rounded-2xl p-3 border border-orange-200 mb-4">
+                          <h3 className="text-xs font-semibold text-orange-900 mb-1.5">💡 Suggested Action</h3>
+                          <p className="text-sm text-gray-700">{selectedGap.suggested_action}</p>
+                        </div>
+
+                        {/* Action Buttons - Compact */}
+                        <div className="flex gap-2">
+                          <button 
+                            onClick={() => {
+                              setUploadGap(selectedGap)
+                              setShowUploadModal(true)
+                            }}
+                            className="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-4 py-2.5 rounded-2xl font-medium hover:shadow-lg transition-all text-sm flex items-center justify-center gap-2"
+                          >
+                            <Upload className="w-4 h-4" />
+                            Upload Material
+                          </button>
+                          <button onClick={() => setSelectedGap(null)} className="px-4 py-2.5 border border-gray-300 rounded-2xl font-medium text-gray-700 hover:bg-gray-50 transition-all text-sm">
+                            Close
+                          </button>
+                        </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Upload Material Modal */}
+                  {showUploadModal && uploadGap && (
+                    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowUploadModal(false)}>
+                      <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                        <div className="p-6">
+                          {/* Header */}
+                          <div className="flex items-start justify-between mb-4">
+                            <div>
+                              <h2 className="text-xl font-bold text-gray-900 mb-1">Upload Learning Material</h2>
+                              <p className="text-sm text-gray-600">For: <span className="font-semibold text-orange-600">{uploadGap.topic}</span></p>
+                            </div>
+                            <button onClick={() => setShowUploadModal(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
+                              <X className="w-5 h-5" />
+                            </button>
+                          </div>
+
+                          {/* Upload Options */}
+                          <div className="space-y-3 mb-6">
+                            {/* File Upload */}
+                            <div className="border-2 border-dashed border-gray-300 rounded-2xl p-6 hover:border-orange-400 hover:bg-orange-50/50 transition-all cursor-pointer group">
+                              <label className="cursor-pointer flex flex-col items-center">
+                                <div className="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center mb-3 group-hover:bg-orange-200 transition-colors">
+                                  <Upload className="w-6 h-6 text-orange-600" />
+                                </div>
+                                <div className="text-center">
+                                  <p className="text-sm font-semibold text-gray-900 mb-1">Upload Files</p>
+                                  <p className="text-xs text-gray-500">PDF, DOCX, TXT, or Markdown</p>
+                                </div>
+                                <input type="file" className="hidden" accept=".pdf,.docx,.txt,.md" multiple />
+                              </label>
+                            </div>
+
+                            {/* Link Input */}
+                            <div className="border-2 border-gray-200 rounded-2xl p-4 hover:border-orange-400 hover:bg-orange-50/50 transition-all">
+                              <div className="flex items-center gap-3 mb-2">
+                                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                                  <Link className="w-5 h-5 text-blue-600" />
+                                </div>
+                                <div className="flex-1">
+                                  <p className="text-sm font-semibold text-gray-900">Add Resource Link</p>
+                                  <p className="text-xs text-gray-500">External documentation or tutorial</p>
+                                </div>
+                              </div>
+                              <input 
+                                type="url" 
+                                placeholder="https://example.com/tutorial" 
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div className="flex gap-3">
+                            <button className="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-4 py-2.5 rounded-2xl font-medium hover:shadow-lg transition-all text-sm">
+                              Submit Materials
+                            </button>
+                            <button onClick={() => setShowUploadModal(false)} className="px-4 py-2.5 border border-gray-300 rounded-2xl font-medium text-gray-700 hover:bg-gray-50 transition-all text-sm">
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>

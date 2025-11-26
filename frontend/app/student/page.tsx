@@ -153,17 +153,17 @@ export default function Home() {
   return (
     <div className="flex h-screen bg-[#f7f7f5]">
       {/* Sidebar - Refined Academic Minimalist */}
-      <aside className="w-64 bg-white border-r border-gray-200 flex flex-col">
+      <aside className="w-56 bg-gray-50 border-r border-gray-200 flex flex-col">
         {/* Logo - Editorial Typography */}
-        <div className="p-4 border-b border-gray-200">
+        <div className="px-3 py-2 border-b border-gray-200">
           <Logo size="sm" showText={true} />
         </div>
 
         {/* Primary Action - Subtle Outlined Button */}
-        <div className="px-4 py-4">
+        <div className="px-3 py-3">
           <button
             onClick={handleNewChat}
-            className="w-full px-4 py-2.5 bg-white border border-gray-300 hover:border-gray-400 text-gray-900 font-medium text-sm rounded-lg shadow-sm hover:shadow-md transition-all duration-200 flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-30"
+            className="w-full px-3 py-2 text-sm text-gray-700 bg-white border border-gray-300 hover:border-gray-400 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-30"
           >
             <MessageCircle size={16} className="text-gray-600" />
             <span>New Chat</span>
@@ -171,50 +171,50 @@ export default function Home() {
         </div>
 
         {/* Navigation - Increased Spacing */}
-        <nav className="px-4 py-2 space-y-1">
+        <nav className="px-3 py-2 space-y-0.5">
           <button
             onClick={() => router.push('/faq')}
-            className="w-full px-4 py-3 text-left text-sm text-gray-600 hover:text-gray-900 hover:font-semibold rounded-lg transition-all duration-200 flex items-center gap-3 group relative focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-30"
+            className="w-full px-3 py-2 text-left text-sm text-gray-600 hover:text-gray-900 hover:font-semibold rounded-lg transition-all duration-200 flex items-center gap-2.5 group relative focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-30"
           >
             <div className="absolute left-0 w-1 h-0 bg-orange-500 rounded-r group-hover:h-full transition-all duration-200"></div>
-            <HelpCircle size={18} className="text-gray-500 group-hover:text-orange-500 transition-colors" />
+            <HelpCircle size={16} className="text-gray-500 group-hover:text-orange-500 transition-colors" />
             <span>FAQ</span>
           </button>
           <button
             onClick={() => router.push('/study-plan')}
-            className="w-full px-4 py-3 text-left text-sm text-gray-600 hover:text-gray-900 hover:font-semibold rounded-lg transition-all duration-200 flex items-center gap-3 group relative focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-30"
+            className="w-full px-3 py-2 text-left text-sm text-gray-600 hover:text-gray-900 hover:font-semibold rounded-lg transition-all duration-200 flex items-center gap-2.5 group relative focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-30"
           >
             <div className="absolute left-0 w-1 h-0 bg-orange-500 rounded-r group-hover:h-full transition-all duration-200"></div>
-            <BookOpen size={18} className="text-gray-500 group-hover:text-orange-500 transition-colors" />
+            <BookOpen size={16} className="text-gray-500 group-hover:text-orange-500 transition-colors" />
             <span>Study Plan</span>
           </button>
           <button
             onClick={() => router.push('/assignment-help')}
-            className="w-full px-4 py-3 text-left text-sm text-gray-600 hover:text-gray-900 hover:font-semibold rounded-lg transition-all duration-200 flex items-center gap-3 group relative focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-30"
+            className="w-full px-3 py-2 text-left text-sm text-gray-600 hover:text-gray-900 hover:font-semibold rounded-lg transition-all duration-200 flex items-center gap-2.5 group relative focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-30"
           >
             <div className="absolute left-0 w-1 h-0 bg-orange-500 rounded-r group-hover:h-full transition-all duration-200"></div>
-            <FileText size={18} className="text-gray-500 group-hover:text-orange-500 transition-colors" />
+            <FileText size={16} className="text-gray-500 group-hover:text-orange-500 transition-colors" />
             <span>Assignment Help</span>
           </button>
         </nav>
         
         {/* Chat History */}
-        <div className="flex-1 overflow-y-auto px-4 mt-6">
-          <div className="px-4 mb-3">
+        <div className="flex-1 overflow-y-auto px-3 mt-4">
+          <div className="mb-2">
             <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Recent Chats</div>
           </div>
-          <div className="px-4 py-8 text-center">
+          <div className="py-6 text-center">
             <div className="text-xs text-gray-400">No chat history yet</div>
           </div>
         </div>
 
         {/* Bottom */}
-        <div className="px-4 py-4 border-t border-gray-200">
+        <div className="px-4 py-3 border-t border-gray-200">
           <button
             onClick={() => router.push('/login')}
-            className="w-full px-4 py-2.5 text-left text-sm text-gray-600 hover:text-gray-900 hover:bg-white rounded-lg transition-all duration-200 flex items-center gap-3 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-30"
+            className="w-full px-3 py-2 text-left text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-all duration-200 flex items-center gap-2.5 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-30"
           >
-            <User size={18} className="text-gray-500" />
+            <User size={16} className="text-gray-500" />
             <span>Switch Role</span>
           </button>
         </div>
@@ -239,12 +239,7 @@ export default function Home() {
                   <button
                     key={i}
                     onClick={() => setInput(starter)}
-                    className={`p-5 text-left rounded-2xl shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-30 ${
-                      i % 4 === 0 ? 'bg-blue-50/50 border border-blue-100 hover:bg-blue-50' :
-                      i % 4 === 1 ? 'bg-orange-50/50 border border-orange-100 hover:bg-orange-50' :
-                      i % 4 === 2 ? 'bg-green-50/50 border border-green-100 hover:bg-green-50' :
-                      'bg-purple-50/50 border border-purple-100 hover:bg-purple-50'
-                    }`}
+                    className="p-5 text-left rounded-2xl shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-30 bg-white border-2 border-gray-200 hover:border-orange-400"
                   >
                     <div className="text-sm text-gray-700 leading-relaxed">{starter}</div>
                   </button>
@@ -345,7 +340,7 @@ export default function Home() {
         </div>
 
         {/* Input Area - Compact */}
-        <div className="border-t border-gray-200 bg-white px-4 py-3">
+        <div className="bg-[#f7f7f5] px-4 py-3">
           <div className="max-w-4xl mx-auto">
             <div className="relative flex items-center gap-2">
               <input

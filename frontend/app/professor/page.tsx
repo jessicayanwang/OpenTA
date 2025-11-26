@@ -186,18 +186,17 @@ export default function ProfessorConsole() {
   return (
     <div className="flex h-screen bg-[#f7f7f5]">
       {/* Sidebar - Refined Academic Minimalist */}
-      <aside className="w-64 bg-white border-r border-gray-200 flex flex-col">
+      <aside className="w-56 bg-gray-50 border-r border-gray-200 flex flex-col">
         {/* Logo */}
-        <div className="p-4 border-b border-gray-200">
+        <div className="px-3 py-2 border-b border-gray-200">
           <Logo size="sm" showText={true} />
-          <div className="text-xs text-gray-500 mt-3">Professor Console</div>
         </div>
         
-        {/* Navigation - Increased Spacing */}
-        <nav className="px-4 py-4 space-y-1">
+        {/* Navigation */}
+        <nav className="px-3 py-2 space-y-0.5">
           <button
             onClick={() => setActiveTab('dashboard')}
-            className={`w-full px-4 py-3 text-left text-sm rounded-lg transition-all duration-200 flex items-center gap-3 group relative focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-30 ${
+            className={`w-full px-3 py-2 text-left text-sm rounded-lg transition-all duration-200 flex items-center gap-2.5 group relative focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-30 ${
               activeTab === 'dashboard' 
                 ? 'text-gray-900 font-semibold' 
                 : 'text-gray-600 hover:text-gray-900 hover:font-semibold'
@@ -206,14 +205,14 @@ export default function ProfessorConsole() {
             <div className={`absolute left-0 w-1 rounded-r transition-all duration-200 ${
               activeTab === 'dashboard' ? 'h-full bg-orange-500' : 'h-0 bg-orange-500 group-hover:h-full'
             }`}></div>
-            <BarChart3 size={18} className={`transition-colors ${
+            <BarChart3 size={16} className={`transition-colors ${
               activeTab === 'dashboard' ? 'text-orange-500' : 'text-gray-500 group-hover:text-orange-500'
             }`} />
             <span>Dashboard</span>
           </button>
           <button
             onClick={() => setActiveTab('students')}
-            className={`w-full px-4 py-3 text-left text-sm rounded-lg transition-all duration-200 flex items-center gap-3 group relative focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-30 ${
+            className={`w-full px-3 py-2 text-left text-sm rounded-lg transition-all duration-200 flex items-center gap-2.5 group relative focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-30 ${
               activeTab === 'students' 
                 ? 'text-gray-900 font-semibold' 
                 : 'text-gray-600 hover:text-gray-900 hover:font-semibold'
@@ -222,14 +221,14 @@ export default function ProfessorConsole() {
             <div className={`absolute left-0 w-1 rounded-r transition-all duration-200 ${
               activeTab === 'students' ? 'h-full bg-orange-500' : 'h-0 bg-orange-500 group-hover:h-full'
             }`}></div>
-            <Users size={18} className={`transition-colors ${
+            <Users size={16} className={`transition-colors ${
               activeTab === 'students' ? 'text-orange-500' : 'text-gray-500 group-hover:text-orange-500'
             }`} />
             <span>Student Analytics</span>
           </button>
           <button
             onClick={() => setActiveTab('content-gaps')}
-            className={`w-full px-4 py-3 text-left text-sm rounded-lg transition-all duration-200 flex items-center gap-3 group relative focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-30 ${
+            className={`w-full px-3 py-2 text-left text-sm rounded-lg transition-all duration-200 flex items-center gap-2.5 group relative focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-30 ${
               activeTab === 'content-gaps' 
                 ? 'text-gray-900 font-semibold' 
                 : 'text-gray-600 hover:text-gray-900 hover:font-semibold'
@@ -238,14 +237,14 @@ export default function ProfessorConsole() {
             <div className={`absolute left-0 w-1 rounded-r transition-all duration-200 ${
               activeTab === 'content-gaps' ? 'h-full bg-orange-500' : 'h-0 bg-orange-500 group-hover:h-full'
             }`}></div>
-            <Search size={18} className={`transition-colors ${
+            <Search size={16} className={`transition-colors ${
               activeTab === 'content-gaps' ? 'text-orange-500' : 'text-gray-500 group-hover:text-orange-500'
             }`} />
             <span>Content Gaps</span>
           </button>
           <button
             onClick={() => setActiveTab('clusters')}
-            className={`w-full px-4 py-3 text-left text-sm rounded-lg transition-all duration-200 flex items-center gap-3 group relative focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-30 ${
+            className={`w-full px-3 py-2 text-left text-sm rounded-lg transition-all duration-200 flex items-center gap-2.5 group relative focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-30 ${
               activeTab === 'clusters' 
                 ? 'text-gray-900 font-semibold' 
                 : 'text-gray-600 hover:text-gray-900 hover:font-semibold'
@@ -254,7 +253,7 @@ export default function ProfessorConsole() {
             <div className={`absolute left-0 w-1 rounded-r transition-all duration-200 ${
               activeTab === 'clusters' ? 'h-full bg-orange-500' : 'h-0 bg-orange-500 group-hover:h-full'
             }`}></div>
-            <MessageSquare size={18} className={`transition-colors ${
+            <MessageSquare size={16} className={`transition-colors ${
               activeTab === 'clusters' ? 'text-orange-500' : 'text-gray-500 group-hover:text-orange-500'
             }`} />
             <span>Question Clusters</span>
@@ -265,12 +264,12 @@ export default function ProfessorConsole() {
         <div className="flex-1"></div>
 
         {/* Bottom */}
-        <div className="px-4 py-4 border-t border-gray-200">
+        <div className="px-4 py-3 border-t border-gray-200">
           <button
             onClick={() => router.push('/login')}
-            className="w-full px-4 py-2.5 text-left text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-all duration-200 flex items-center gap-3 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-30"
+            className="w-full px-3 py-2 text-left text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-all duration-200 flex items-center gap-2.5 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-30"
           >
-            <User size={18} className="text-gray-500" />
+            <User size={16} className="text-gray-500" />
             <span>Switch Role</span>
           </button>
         </div>

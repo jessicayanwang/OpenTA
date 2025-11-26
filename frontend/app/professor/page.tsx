@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { BarChart3, Users, Search, MessageSquare, User, UserCircle, AlertCircle, AlertTriangle, TrendingUp, FileText, Upload, Link, X } from 'lucide-react'
+import { BarChart3, Users, Search, MessageSquare, User, UserCircle, AlertCircle, AlertTriangle, TrendingUp, FileText, Upload, Link, X, CheckCircle, Clock, Eye, Edit, Trash2 } from 'lucide-react'
 import Logo from '@/components/Logo'
 
 interface DashboardMetrics {
@@ -51,6 +51,8 @@ interface QuestionCluster {
   artifact: string | null
   section: string | null
   canonical_answer_id: string | null
+  canonical_answer?: string
+  last_updated?: string
   created_at: string
   last_seen: string
 }
@@ -80,6 +82,7 @@ export default function ProfessorConsole() {
   const [selectedCluster, setSelectedCluster] = useState<QuestionCluster | null>(null)
   const [canonicalAnswer, setCanonicalAnswer] = useState('')
   const [showAnswerModal, setShowAnswerModal] = useState(false)
+  const [showViewAnswerModal, setShowViewAnswerModal] = useState(false)
   
   // Demo data seeded
   const [demoSeeded, setDemoSeeded] = useState(false)
@@ -127,11 +130,37 @@ export default function ProfessorConsole() {
       } else if (activeTab === 'content-gaps') {
         const res = await fetch('http://localhost:8000/api/professor/content-gaps?course_id=cs50')
         const data = await res.json()
-        // Add some low priority gaps for demonstration
+        // Add mock high priority gaps
+        const highPriorityGaps = [
+          {
+            topic: 'Pointers and Memory Management',
+            question_count: 42,
+            priority: 'high',
+            example_questions: [
+              'How do pointers work in C?',
+              'What is the difference between stack and heap?',
+              'When should I use malloc vs calloc?'
+            ],
+            suggested_action: 'Add comprehensive tutorial on pointers with visual diagrams'
+          },
+          {
+            topic: 'Recursion',
+            question_count: 35,
+            priority: 'high',
+            example_questions: [
+              'How does recursion work?',
+              'What is a base case?',
+              'How to debug recursive functions?'
+            ],
+            suggested_action: 'Create step-by-step recursion examples with call stack visualization'
+          }
+        ]
+        
+        // Add low priority gaps with smaller counts
         const lowPriorityGaps = [
           {
             topic: 'File I/O Operations',
-            question_count: 45,
+            question_count: 12,
             priority: 'low',
             example_questions: [
               'How do I read from a file?',
@@ -141,7 +170,7 @@ export default function ProfessorConsole() {
           },
           {
             topic: 'String Formatting',
-            question_count: 38,
+            question_count: 8,
             priority: 'low',
             example_questions: [
               'How to use f-strings?',
@@ -151,7 +180,7 @@ export default function ProfessorConsole() {
           },
           {
             topic: 'List Comprehensions',
-            question_count: 52,
+            question_count: 15,
             priority: 'low',
             example_questions: [
               'How do list comprehensions work?',
@@ -160,11 +189,112 @@ export default function ProfessorConsole() {
             suggested_action: 'Add interactive examples and exercises'
           }
         ]
-        setContentGaps([...data.gaps, ...lowPriorityGaps])
+        
+        // Filter backend data to only include reasonable question counts (5-50)
+        const filteredGaps = (data.gaps || []).filter((gap: ContentGap) => 
+          gap.question_count >= 5 && gap.question_count <= 50
+        )
+        
+        setContentGaps([...highPriorityGaps, ...filteredGaps, ...lowPriorityGaps])
       } else if (activeTab === 'clusters') {
         const res = await fetch('http://localhost:8000/api/professor/clusters?course_id=cs50&semantic=true&min_count=2')
         const data = await res.json()
-        setClusters(data)
+        
+        // Add mock answered clusters
+        const answeredClusters = [
+          {
+            cluster_id: 'answered_1',
+            representative_question: 'How do I allocate memory with malloc?',
+            count: 42,
+            artifact: 'Pointers',
+            section: 'Week 3',
+            canonical_answer_id: 'ans_1',
+            canonical_answer: 'Memory allocation in C uses malloc() to dynamically allocate memory on the heap. You need to include <stdlib.h> and remember to free the memory when done to avoid memory leaks.',
+            similar_questions: [
+              'What is malloc used for?',
+              'How to allocate memory in C?',
+              'Difference between malloc and calloc?',
+              'Why do I need to free memory?',
+              'How much memory does malloc allocate?'
+            ],
+            last_updated: '2 days ago'
+          },
+          {
+            cluster_id: 'answered_2',
+            representative_question: 'What is the difference between arrays and pointers?',
+            count: 28,
+            artifact: 'Pointers',
+            section: 'Week 3',
+            canonical_answer_id: 'ans_2',
+            canonical_answer: 'Arrays and pointers are closely related in C. An array name is essentially a pointer to the first element. However, arrays have fixed size and pointers can be reassigned.',
+            similar_questions: [
+              'Are arrays and pointers the same?',
+              'Can I use array notation with pointers?',
+              'Why does array[i] equal *(array + i)?',
+              'Can I reassign an array name?',
+              'What is pointer arithmetic?'
+            ],
+            last_updated: '5 days ago'
+          },
+          {
+            cluster_id: 'answered_3',
+            representative_question: 'How do I debug segmentation faults?',
+            count: 35,
+            artifact: 'Debugging',
+            section: 'Week 4',
+            canonical_answer_id: 'ans_3',
+            canonical_answer: 'Segmentation faults occur when you access memory you shouldn\'t. Use valgrind to detect memory errors, check array bounds, ensure pointers are initialized, and verify malloc succeeded.',
+            similar_questions: [
+              'What causes segfaults?',
+              'How to fix segmentation fault?',
+              'Why does my program crash with segfault?',
+              'How to use valgrind?',
+              'What is a null pointer dereference?'
+            ],
+            last_updated: '1 week ago'
+          }
+        ]
+        
+        // Add mock unanswered clusters with reasonable counts
+        const unansweredClusters = [
+          {
+            cluster_id: 'unanswered_1',
+            representative_question: 'How do I implement a linked list in C?',
+            count: 23,
+            artifact: 'Data Structures',
+            section: 'Week 5',
+            canonical_answer_id: null,
+            similar_questions: [
+              'What is a linked list?',
+              'How to create nodes in C?',
+              'How to traverse a linked list?',
+              'How to insert at the beginning?'
+            ],
+            created_at: '2024-01-15',
+            last_seen: '2024-01-20'
+          },
+          {
+            cluster_id: 'unanswered_2',
+            representative_question: 'When should I use struct vs typedef?',
+            count: 31,
+            artifact: 'Structs',
+            section: 'Week 4',
+            canonical_answer_id: null,
+            similar_questions: [
+              'What is typedef?',
+              'Difference between struct and typedef struct?',
+              'How to define custom types?',
+              'Best practices for structs?'
+            ],
+            created_at: '2024-01-14',
+            last_seen: '2024-01-20'
+          }
+        ]
+        
+        // Filter backend data to only include reasonable counts
+        const filteredData = data.filter((cluster: QuestionCluster) => cluster.count <= 50)
+        
+        setClusters([...answeredClusters, ...unansweredClusters, ...filteredData])
       }
     } catch (error) {
       console.error('Error loading data:', error)
@@ -177,6 +307,26 @@ export default function ProfessorConsole() {
     setSelectedCluster(cluster)
     setCanonicalAnswer('')
     setShowAnswerModal(true)
+  }
+
+  const handleDeleteCluster = async (clusterId: string, e: React.MouseEvent) => {
+    e.stopPropagation() // Prevent card click
+    
+    if (!confirm('Are you sure you want to delete this question cluster? This action cannot be undone.')) {
+      return
+    }
+
+    try {
+      // Remove from local state
+      setClusters(clusters.filter(c => c.cluster_id !== clusterId))
+      
+      // Optionally call backend to delete
+      // await fetch(`http://localhost:8000/api/professor/clusters/${clusterId}`, {
+      //   method: 'DELETE'
+      // })
+    } catch (error) {
+      console.error('Error deleting cluster:', error)
+    }
   }
 
   const handlePublishAnswer = async () => {
@@ -685,7 +835,7 @@ export default function ProfessorConsole() {
                                 <div className="w-full bg-gray-200 rounded-full h-1.5">
                                   <div 
                                     className={`h-1.5 rounded-full transition-all ${isHighPriority ? 'bg-orange-500' : 'bg-gray-400'}`}
-                                    style={{width: `${Math.min(100, (gap.question_count / 350) * 100)}%`}}
+                                    style={{width: `${isHighPriority ? Math.min(100, (gap.question_count / 50) * 100) : Math.min(100, (gap.question_count / 20) * 100)}%`}}
                                   ></div>
                                 </div>
                               </div>
@@ -874,8 +1024,8 @@ export default function ProfessorConsole() {
               {/* Clusters Tab */}
               {activeTab === 'clusters' && (
                 <div>
-                  <h1 className="text-3xl font-normal text-gray-900 mb-2">Question Clusters</h1>
-                  <p className="text-gray-600 mb-8">AI-powered semantic grouping of similar questions</p>
+                  <h1 className="text-3xl font-normal text-gray-900 mb-1">Question Clusters</h1>
+                  <p className="text-gray-600 mb-4">AI-powered semantic grouping of similar questions</p>
 
                   {clusters.length === 0 ? (
                     <div className="text-center py-20 text-gray-500">
@@ -883,60 +1033,137 @@ export default function ProfessorConsole() {
                       <p className="text-sm mt-2">Students need to ask questions first</p>
                     </div>
                   ) : (
-                    <div className="space-y-4">
-                      {clusters.map((cluster) => (
-                        <div key={cluster.cluster_id} className="bg-white rounded-xl border border-gray-200 p-6">
-                          <div className="flex items-start justify-between mb-4">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-3">
-                                <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full font-medium">
-                                  {cluster.count} similar questions
-                                </span>
-                                {cluster.artifact && (
-                                  <span className="bg-purple-50 text-purple-700 text-xs px-2 py-1 rounded-full">
-                                    {cluster.artifact}
-                                  </span>
-                                )}
-                                {cluster.section && (
-                                  <span className="bg-green-50 text-green-700 text-xs px-2 py-1 rounded-full">
-                                    {cluster.section}
-                                  </span>
-                                )}
-                                {cluster.canonical_answer_id && (
-                                  <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
-                                    ✓ Has canonical answer
-                                  </span>
-                                )}
-                              </div>
-                              <p className="text-lg text-gray-900 mb-3 font-medium">
-                                {cluster.representative_question}
-                              </p>
-                              <details className="text-sm">
-                                <summary className="cursor-pointer text-gray-600 hover:text-gray-900 font-medium">
-                                  View all {cluster.similar_questions.length} questions
-                                </summary>
-                                <ul className="mt-3 ml-4 space-y-2">
-                                  {cluster.similar_questions.slice(0, 10).map((q, i) => (
-                                    <li key={i} className="text-gray-600">• {q}</li>
-                                  ))}
-                                  {cluster.similar_questions.length > 10 && (
-                                    <li className="text-gray-500 italic">+ {cluster.similar_questions.length - 10} more...</li>
-                                  )}
-                                </ul>
-                              </details>
-                            </div>
-                            {!cluster.canonical_answer_id && (
-                              <button
-                                onClick={() => handleCreateAnswer(cluster)}
-                                className="px-4 py-2 bg-gradient-to-br from-orange-400 to-orange-600 text-white rounded-lg hover:from-orange-500 hover:to-orange-700 text-sm font-medium transition"
-                              >
-                                Create Answer
-                              </button>
-                            )}
+                    <>
+                      {/* Summary Stats */}
+                      <div className="grid grid-cols-2 gap-3 mb-4">
+                        <div className="bg-gradient-to-br from-green-50 to-white rounded-2xl border border-green-100 p-4">
+                          <div className="flex items-center gap-2 mb-1">
+                            <CheckCircle className="w-5 h-5 text-green-600" />
+                            <span className="text-sm font-medium text-green-700">Answered</span>
+                          </div>
+                          <div className="text-2xl font-bold text-gray-900">
+                            {clusters.filter(c => c.canonical_answer_id).length}
+                          </div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            {clusters.filter(c => c.canonical_answer_id).reduce((sum, c) => sum + c.count, 0)} questions covered
                           </div>
                         </div>
-                      ))}
-                    </div>
+                        <div className="bg-gradient-to-br from-orange-50 to-white rounded-2xl border border-orange-100 p-4">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Clock className="w-5 h-5 text-orange-600" />
+                            <span className="text-sm font-medium text-orange-700">Needs Answer</span>
+                          </div>
+                          <div className="text-2xl font-bold text-gray-900">
+                            {clusters.filter(c => !c.canonical_answer_id).length}
+                          </div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            {clusters.filter(c => !c.canonical_answer_id).reduce((sum, c) => sum + c.count, 0)} questions waiting
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Side-by-Side Columns */}
+                      <div className="grid grid-cols-2 gap-4">
+                        {/* Answered Clusters */}
+                        <div>
+                          <h2 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                            <CheckCircle className="w-5 h-5 text-green-600" />
+                            Answered Clusters
+                          </h2>
+                          <div className="space-y-3">
+                            {clusters.filter(c => c.canonical_answer_id).map((cluster) => (
+                              <div key={cluster.cluster_id} className="relative group/card">
+                                <button
+                                  onClick={() => {
+                                    setSelectedCluster(cluster)
+                                    setShowViewAnswerModal(true)
+                                  }}
+                                  className="bg-white/60 backdrop-blur-md rounded-2xl border border-green-200 p-4 hover:shadow-lg hover:border-green-300 transition-all text-left group w-full"
+                                >
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <CheckCircle className="w-4 h-4 text-green-600" />
+                                    <span className="text-xs font-medium text-green-700">{cluster.count} questions</span>
+                                    {cluster.artifact && (
+                                      <span className="text-xs bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full">
+                                        {cluster.artifact}
+                                      </span>
+                                    )}
+                                  </div>
+                                <h3 className="text-sm font-semibold text-gray-900 mb-2 group-hover:text-green-600 transition-colors">
+                                  {cluster.representative_question}
+                                </h3>
+                                <p className="text-xs text-gray-600 line-clamp-2 mb-2">
+                                  {cluster.canonical_answer}
+                                </p>
+                                <div className="flex items-center justify-between text-xs">
+                                  <span className="text-gray-400">{cluster.last_updated}</span>
+                                  <span className="text-green-600 font-medium group-hover:underline flex items-center gap-1">
+                                    <Eye className="w-3 h-3" />
+                                    View Answer
+                                  </span>
+                                </div>
+                              </button>
+                              <button
+                                onClick={(e) => handleDeleteCluster(cluster.cluster_id, e)}
+                                className="absolute top-2 right-2 p-1.5 bg-red-50 text-red-600 rounded-lg opacity-0 group-hover/card:opacity-100 hover:bg-red-100 transition-all"
+                                title="Delete cluster"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Unanswered Clusters */}
+                        <div>
+                          <h2 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                            <Clock className="w-5 h-5 text-orange-600" />
+                            Needs Answer
+                          </h2>
+                          <div className="space-y-3">
+                            {clusters.filter(c => !c.canonical_answer_id).map((cluster) => (
+                              <div key={cluster.cluster_id} className="relative group/card">
+                                <button
+                                  onClick={() => handleCreateAnswer(cluster)}
+                                  className="bg-white/60 backdrop-blur-md rounded-2xl border border-orange-200 p-4 hover:shadow-lg hover:border-orange-300 transition-all text-left group w-full"
+                                >
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <Clock className="w-4 h-4 text-orange-600" />
+                                    <span className="text-xs font-medium text-orange-700">{cluster.count} questions</span>
+                                    {cluster.artifact && (
+                                      <span className="text-xs bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full">
+                                        {cluster.artifact}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <h3 className="text-sm font-semibold text-gray-900 mb-2 group-hover:text-orange-600 transition-colors">
+                                    {cluster.representative_question}
+                                  </h3>
+                                  <p className="text-xs text-gray-500 mb-2">
+                                    {cluster.count} students waiting for answer
+                                  </p>
+                                  <div className="flex items-center justify-between text-xs">
+                                    <span className="text-gray-400">No answer yet</span>
+                                    <span className="text-orange-600 font-medium group-hover:underline flex items-center gap-1">
+                                      <Edit className="w-3 h-3" />
+                                      Create Answer
+                                    </span>
+                                  </div>
+                                </button>
+                                <button
+                                  onClick={(e) => handleDeleteCluster(cluster.cluster_id, e)}
+                                  className="absolute top-2 right-2 p-1.5 bg-red-50 text-red-600 rounded-lg opacity-0 group-hover/card:opacity-100 hover:bg-red-100 transition-all"
+                                  title="Delete cluster"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </>
                   )}
                 </div>
               )}
@@ -947,37 +1174,49 @@ export default function ProfessorConsole() {
 
       {/* Canonical Answer Modal */}
       {showAnswerModal && selectedCluster && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-gray-200">
-              <h2 className="text-2xl font-semibold text-gray-900">Create Canonical Answer</h2>
-              <p className="text-sm text-gray-600 mt-1">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50" onClick={() => {
+          setShowAnswerModal(false)
+          setSelectedCluster(null)
+          setCanonicalAnswer('')
+        }}>
+          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="overflow-y-auto max-h-[85vh]">
+            <div className="p-4 border-b border-gray-200">
+              <h2 className="text-xl font-bold text-gray-900">Create Canonical Answer</h2>
+              <p className="text-xs text-gray-600 mt-1">
                 This answer will automatically respond to similar questions
               </p>
             </div>
             
-            <div className="p-6">
-              <div className="mb-4">
-                <div className="text-sm font-medium text-gray-700 mb-2">Representative Question:</div>
-                <div className="bg-gray-50 p-3 rounded-lg text-gray-900">
+            <div className="p-4">
+              <div className="mb-3">
+                <div className="text-xs font-semibold text-gray-700 mb-1.5">Representative Question:</div>
+                <div className="bg-gray-50 p-2.5 rounded-xl text-sm text-gray-900">
                   {selectedCluster.representative_question}
                 </div>
               </div>
 
-              <div className="mb-4">
-                <div className="text-sm font-medium text-gray-700 mb-2">
-                  Will answer {selectedCluster.count} similar questions
+              <div className="mb-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-medium">
+                    {selectedCluster.count} similar questions
+                  </span>
+                  {selectedCluster.artifact && (
+                    <span className="text-xs bg-purple-50 text-purple-700 px-2 py-1 rounded-full">
+                      {selectedCluster.artifact}
+                    </span>
+                  )}
                 </div>
               </div>
 
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+              <div className="mb-3">
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">
                   Canonical Answer (Markdown supported)
                 </label>
                 <textarea
                   value={canonicalAnswer}
                   onChange={(e) => setCanonicalAnswer(e.target.value)}
-                  className="w-full h-64 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 font-mono text-sm"
+                  className="w-full h-48 px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 font-mono text-sm"
                   placeholder="Write a comprehensive answer that will help all students asking similar questions...
 
 You can use markdown:
@@ -987,32 +1226,115 @@ You can use markdown:
                 />
               </div>
 
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-                <div className="text-xs font-medium text-blue-900 mb-1">💡 Tip:</div>
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-2.5 mb-3">
+                <div className="text-xs font-semibold text-blue-900 mb-1">💡 Tip:</div>
                 <div className="text-xs text-blue-800">
                   Write a clear, comprehensive answer that addresses the core question. This will be shown to all students asking similar questions in the future.
                 </div>
               </div>
             </div>
 
-            <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
+            <div className="p-4 border-t border-gray-200 flex justify-end gap-2">
               <button
                 onClick={() => {
                   setShowAnswerModal(false)
                   setSelectedCluster(null)
                   setCanonicalAnswer('')
                 }}
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-2xl hover:bg-gray-50 transition text-sm"
               >
                 Cancel
               </button>
               <button
                 onClick={handlePublishAnswer}
                 disabled={!canonicalAnswer.trim()}
-                className="px-6 py-2 bg-gradient-to-br from-orange-400 to-orange-600 text-white rounded-lg hover:from-orange-500 hover:to-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-medium"
+                className="px-5 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-2xl hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition font-medium text-sm"
               >
                 Publish Answer
               </button>
+            </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View Answer Modal */}
+      {showViewAnswerModal && selectedCluster && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowViewAnswerModal(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="overflow-y-auto max-h-[85vh] p-6">
+              {/* Header */}
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <CheckCircle className="w-6 h-6 text-green-600" />
+                    <span className="text-sm font-medium text-green-700">Answered Cluster</span>
+                  </div>
+                  <h2 className="text-xl font-bold text-gray-900 mb-2">{selectedCluster.representative_question}</h2>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
+                      {selectedCluster.count} similar questions
+                    </span>
+                    {selectedCluster.artifact && (
+                      <span className="text-xs bg-purple-50 text-purple-700 px-2 py-1 rounded-full">
+                        {selectedCluster.artifact}
+                      </span>
+                    )}
+                    {selectedCluster.section && (
+                      <span className="text-xs bg-green-50 text-green-700 px-2 py-1 rounded-full">
+                        {selectedCluster.section}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <button onClick={() => setShowViewAnswerModal(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Canonical Answer */}
+              <div className="mb-6">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4 text-green-600" />
+                  Canonical Answer
+                </h3>
+                <div className="bg-green-50 rounded-2xl p-4 border border-green-200">
+                  <p className="text-sm text-gray-700 whitespace-pre-wrap">{selectedCluster.canonical_answer}</p>
+                </div>
+                {selectedCluster.last_updated && (
+                  <p className="text-xs text-gray-400 mt-2">Last updated: {selectedCluster.last_updated}</p>
+                )}
+              </div>
+
+              {/* Similar Questions */}
+              <div className="mb-6">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3">Similar Questions ({selectedCluster.similar_questions.length})</h3>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {selectedCluster.similar_questions.map((q, i) => (
+                    <div key={i} className="bg-gray-50 rounded-xl p-2.5 text-sm text-gray-700 border-l-4 border-blue-300">
+                      {q}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-4 border-t border-gray-200">
+                <button 
+                  onClick={() => {
+                    setShowViewAnswerModal(false)
+                    setShowAnswerModal(true)
+                    setCanonicalAnswer(selectedCluster.canonical_answer || '')
+                  }}
+                  className="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-4 py-2.5 rounded-2xl font-medium hover:shadow-lg transition-all text-sm flex items-center justify-center gap-2"
+                >
+                  <Edit className="w-4 h-4" />
+                  Edit Answer
+                </button>
+                <button onClick={() => setShowViewAnswerModal(false)} className="px-4 py-2.5 border border-gray-300 rounded-2xl font-medium text-gray-700 hover:bg-gray-50 transition-all text-sm">
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { MessageCircle, HelpCircle, BookOpen, FileText, User, Send, Sparkles, ChevronRight } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
+import Logo from '@/components/Logo'
 
 interface Citation {
   source: string
@@ -140,72 +141,70 @@ export default function Home() {
   }
 
   return (
-    <div className="flex h-screen bg-bg">
-      {/* Sidebar */}
-      <aside className="w-64 bg-white border-r border-[#E9E4DE] flex flex-col">
-        {/* Logo */}
-        <div className="px-4 py-5 border-b border-[#E9E4DE]">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-gradient-to-br from-accent-500 to-accent-700 rounded-lg flex items-center justify-center text-white font-semibold text-base">
-              O
-            </div>
-            <span className="font-serif font-semibold text-lg text-[#1F1D20]">OpenTA</span>
-          </div>
+    <div className="flex h-screen bg-[#f7f7f5]">
+      {/* Sidebar - Refined Academic Minimalist */}
+      <aside className="w-64 bg-white border-r border-gray-200 flex flex-col">
+        {/* Logo - Editorial Typography */}
+        <div className="p-4 border-b border-gray-200">
+          <Logo size="sm" showText={true} />
         </div>
 
-        {/* Primary Action */}
-        <div className="p-3">
+        {/* Primary Action - Subtle Outlined Button */}
+        <div className="px-4 py-4">
           <button
             onClick={handleNewChat}
-            className="w-full px-4 py-2 bg-accent-600 hover:bg-accent-700 active:bg-accent-800 text-white font-medium text-sm rounded-pill shadow-sm hover:shadow-md transition-all duration-150 flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-accent-500 focus:ring-opacity-40"
+            className="w-full px-4 py-2.5 bg-white border border-gray-300 hover:border-gray-400 text-gray-900 font-medium text-sm rounded-lg shadow-sm hover:shadow-md transition-all duration-200 flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-30"
           >
-            <MessageCircle size={16} />
+            <MessageCircle size={16} className="text-gray-600" />
             <span>New Chat</span>
           </button>
         </div>
 
-        {/* Navigation */}
-        <nav className="px-3 py-2 space-y-0.5">
+        {/* Navigation - Increased Spacing */}
+        <nav className="px-4 py-2 space-y-1">
           <button
             onClick={() => router.push('/faq')}
-            className="w-full px-3 py-2 text-left text-sm text-[#6F6B65] hover:text-[#1F1D20] hover:bg-[#F9F6F1] rounded-lg transition-all duration-120 flex items-center gap-2.5 focus:outline-none focus:ring-2 focus:ring-accent-500 focus:ring-opacity-40"
+            className="w-full px-4 py-3 text-left text-sm text-gray-600 hover:text-gray-900 hover:font-semibold rounded-lg transition-all duration-200 flex items-center gap-3 group relative focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-30"
           >
-            <HelpCircle size={18} />
-            <span className="font-medium">FAQ</span>
+            <div className="absolute left-0 w-1 h-0 bg-orange-500 rounded-r group-hover:h-full transition-all duration-200"></div>
+            <HelpCircle size={18} className="text-gray-500 group-hover:text-orange-500 transition-colors" />
+            <span>FAQ</span>
           </button>
           <button
             onClick={() => router.push('/study-plan')}
-            className="w-full px-3 py-2 text-left text-sm text-[#6F6B65] hover:text-[#1F1D20] hover:bg-[#F9F6F1] rounded-lg transition-all duration-120 flex items-center gap-2.5 focus:outline-none focus:ring-2 focus:ring-accent-500 focus:ring-opacity-40"
+            className="w-full px-4 py-3 text-left text-sm text-gray-600 hover:text-gray-900 hover:font-semibold rounded-lg transition-all duration-200 flex items-center gap-3 group relative focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-30"
           >
-            <BookOpen size={18} />
-            <span className="font-medium">Study Plan</span>
+            <div className="absolute left-0 w-1 h-0 bg-orange-500 rounded-r group-hover:h-full transition-all duration-200"></div>
+            <BookOpen size={18} className="text-gray-500 group-hover:text-orange-500 transition-colors" />
+            <span>Study Plan</span>
           </button>
           <button
             onClick={() => router.push('/assignment-help')}
-            className="w-full px-3 py-2 text-left text-sm text-[#6F6B65] hover:text-[#1F1D20] hover:bg-[#F9F6F1] rounded-lg transition-all duration-120 flex items-center gap-2.5 focus:outline-none focus:ring-2 focus:ring-accent-500 focus:ring-opacity-40"
+            className="w-full px-4 py-3 text-left text-sm text-gray-600 hover:text-gray-900 hover:font-semibold rounded-lg transition-all duration-200 flex items-center gap-3 group relative focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-30"
           >
-            <FileText size={18} />
-            <span className="font-medium">Assignment Help</span>
+            <div className="absolute left-0 w-1 h-0 bg-orange-500 rounded-r group-hover:h-full transition-all duration-200"></div>
+            <FileText size={18} className="text-gray-500 group-hover:text-orange-500 transition-colors" />
+            <span>Assignment Help</span>
           </button>
         </nav>
         
         {/* Chat History */}
-        <div className="flex-1 overflow-y-auto px-3 mt-4">
-          <div className="px-3 mb-2">
-            <div className="text-xs font-semibold text-[#8F8780] uppercase tracking-wider">Recent Chats</div>
+        <div className="flex-1 overflow-y-auto px-4 mt-6">
+          <div className="px-4 mb-3">
+            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Recent Chats</div>
           </div>
-          <div className="px-3 py-6 text-center">
-            <div className="text-xs text-[#B8B1A8]">No chat history yet</div>
+          <div className="px-4 py-8 text-center">
+            <div className="text-xs text-gray-400">No chat history yet</div>
           </div>
         </div>
 
         {/* Bottom */}
-        <div className="p-3 border-t border-[#E9E4DE]">
+        <div className="px-4 py-4 border-t border-gray-200">
           <button
             onClick={() => router.push('/login')}
-            className="w-full px-3 py-2 text-left text-sm text-[#6F6B65] hover:text-[#1F1D20] hover:bg-[#F9F6F1] rounded-lg transition-all duration-120 flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-accent-500 focus:ring-opacity-40"
+            className="w-full px-4 py-2.5 text-left text-sm text-gray-600 hover:text-gray-900 hover:bg-white rounded-lg transition-all duration-200 flex items-center gap-3 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-30"
           >
-            <User size={18} />
+            <User size={18} className="text-gray-500" />
             <span>Switch Role</span>
           </button>
         </div>
@@ -215,65 +214,65 @@ export default function Home() {
       <div className="flex-1 flex flex-col">
 
         {/* Messages Area */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto bg-[#f7f7f5]">
           {showWelcome && messages.length === 0 ? (
-            <div className="max-w-3xl mx-auto px-6 py-20">
-              <div className="text-center mb-16">
-                <h1 className="font-serif font-semibold text-5xl tracking-tight text-[#1F1D20] mb-4">
+            <div className="max-w-3xl mx-auto px-6 py-24">
+              <div className="text-center mb-20">
+                <h1 className="font-normal text-6xl tracking-tight text-gray-900 mb-5">
                   Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'}
                 </h1>
-                <p className="text-[#6F6B65] text-lg">How can I help you learn today?</p>
+                <p className="text-gray-600 text-xl">How can I help you learn today?</p>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 mb-8">
+              <div className="grid grid-cols-2 gap-4 mb-8">
                 {suggestedStarters.map((starter, i) => (
                   <button
                     key={i}
                     onClick={() => setInput(starter)}
-                    className="p-4 text-left bg-white border border-[#E9E4DE] hover:border-[#D9D3CC] hover:bg-[#F9F6F1] rounded-xl shadow-xs hover:shadow-sm transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-accent-500 focus:ring-opacity-40"
+                    className="p-5 text-left bg-white rounded-2xl shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-30 border border-gray-100"
                   >
-                    <div className="text-sm text-[#4A4745] leading-relaxed">{starter}</div>
+                    <div className="text-sm text-gray-700 leading-relaxed">{starter}</div>
                   </button>
                 ))}
               </div>
             </div>
           ) : (
-            <div className="max-w-3xl mx-auto px-6 py-8 space-y-6">
+            <div className="max-w-3xl mx-auto px-6 py-8 space-y-6 bg-[#f7f7f5]">
               {messages.map((message, index) => (
                 <div key={index}>
                   {message.role === 'user' ? (
-                    /* User Message */
+                    /* User Message - Brand Orange */
                     <div className="flex justify-end mb-8">
-                      <div className="bg-accent-100 border border-accent-200 px-5 py-4 rounded-2xl max-w-2xl">
-                        <div className="text-[#1F1D20] text-sm leading-relaxed">
+                      <div className="bg-gradient-to-br from-orange-500 to-orange-600 px-6 py-4 rounded-2xl max-w-2xl shadow-sm">
+                        <div className="text-white text-sm leading-relaxed">
                           {message.content}
                         </div>
                       </div>
                     </div>
                   ) : (
-                    /* Assistant Message */
+                    /* Assistant Message - Light Gray */
                     <div className="flex gap-4 mb-8">
-                      <div className="w-9 h-9 bg-gradient-to-br from-accent-500 to-accent-700 rounded-full flex items-center justify-center flex-shrink-0">
+                      <div className="w-10 h-10 bg-gradient-to-br from-orange-400 to-orange-600 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm">
                         <Sparkles size={18} className="text-white" />
                       </div>
                       <div className="flex-1 max-w-2xl">
-                        <div className="bg-white border border-[#E9E4DE] rounded-2xl px-5 py-4 shadow-sm">
-                          <div className="text-[#1F1D20] text-sm leading-relaxed prose prose-sm max-w-none">
+                        <div className="bg-gray-50 border border-gray-200 rounded-2xl px-6 py-5 shadow-sm">
+                          <div className="text-gray-800 text-sm leading-relaxed prose prose-sm max-w-none">
                             <ReactMarkdown>{message.content}</ReactMarkdown>
                           </div>
                           
                           {message.confidence !== undefined && (
-                            <div className="mt-2 text-xs text-gray-500">
+                            <div className="mt-3 text-xs text-gray-500 font-medium">
                               Confidence: {(message.confidence * 100).toFixed(0)}%
                             </div>
                           )}
 
-                          {/* Citations - Compact Collapsible Format */}
+                          {/* Citations - Academic Pill Style */}
                           {message.citations && message.citations.length > 0 && (
-                            <div className="mt-4 pt-4 border-t border-[#E9E4DE]">
+                            <div className="mt-5 pt-5 border-t border-gray-200">
                               <div className="flex flex-wrap gap-2">
                                 {message.citations.map((citation, idx) => (
-                                  <span key={idx} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-accent-100 text-accent-700 text-xs font-medium rounded-pill border border-accent-200">
+                                  <span key={idx} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-orange-50 text-orange-700 text-xs font-medium rounded-full border border-orange-200">
                                     <FileText size={12} />
                                     {citation.source} • {citation.section}
                                   </span>
@@ -284,17 +283,17 @@ export default function Home() {
 
                           {/* Suggested Follow-up Questions */}
                           {message.suggestedQuestions && message.suggestedQuestions.length > 0 && (
-                            <div className="mt-4 pt-4 border-t border-[#E9E4DE]">
-                              <div className="text-xs font-medium text-[#6F6B65] mb-3">Suggested follow-ups</div>
+                            <div className="mt-5 pt-5 border-t border-gray-200">
+                              <div className="text-xs font-semibold text-gray-600 mb-3">Suggested follow-ups</div>
                               <div className="space-y-2">
                                 {message.suggestedQuestions.map((question, idx) => (
                                   <button
                                     key={idx}
                                     onClick={() => setInput(question)}
-                                    className="w-full text-left text-xs text-[#4A4745] hover:text-[#1F1D20] bg-[#F9F6F1] hover:bg-neutral-100 px-4 py-2.5 rounded-xl transition-all duration-120 flex items-center justify-between group focus:outline-none focus:ring-2 focus:ring-accent-500 focus:ring-opacity-40"
+                                    className="w-full text-left text-xs text-gray-700 hover:text-gray-900 bg-white hover:bg-gray-50 px-4 py-3 rounded-xl transition-all duration-200 flex items-center justify-between group focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-30 border border-gray-200 hover:border-gray-300"
                                   >
                                     <span>{question}</span>
-                                    <ChevronRight size={14} className="text-[#6F6B65] group-hover:text-accent-600 transition-colors" />
+                                    <ChevronRight size={14} className="text-gray-400 group-hover:text-orange-500 transition-colors" />
                                   </button>
                                 ))}
                               </div>
@@ -309,16 +308,16 @@ export default function Home() {
               
               {loading && (
                 <div className="flex gap-4 mb-8">
-                  <div className="w-9 h-9 bg-gradient-to-br from-accent-500 to-accent-700 rounded-full flex items-center justify-center flex-shrink-0">
+                  <div className="w-10 h-10 bg-gradient-to-br from-orange-400 to-orange-600 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm">
                     <Sparkles size={18} className="text-white" />
                   </div>
                   <div className="flex-1 max-w-2xl">
-                    <div className="bg-white border border-[#E9E4DE] rounded-2xl px-5 py-4 shadow-sm">
-                      <div className="flex items-center gap-3 text-[#6F6B65]">
+                    <div className="bg-gray-50 border border-gray-200 rounded-2xl px-6 py-5 shadow-sm">
+                      <div className="flex items-center gap-3 text-gray-600">
                         <div className="flex gap-1.5">
-                          <span className="w-2 h-2 bg-accent-500 rounded-full animate-bounce"></span>
-                          <span className="w-2 h-2 bg-accent-500 rounded-full animate-bounce" style={{animationDelay: '150ms'}}></span>
-                          <span className="w-2 h-2 bg-accent-500 rounded-full animate-bounce" style={{animationDelay: '300ms'}}></span>
+                          <span className="w-2 h-2 bg-orange-500 rounded-full animate-bounce"></span>
+                          <span className="w-2 h-2 bg-orange-500 rounded-full animate-bounce" style={{animationDelay: '150ms'}}></span>
+                          <span className="w-2 h-2 bg-orange-500 rounded-full animate-bounce" style={{animationDelay: '300ms'}}></span>
                         </div>
                         <span className="text-sm">Thinking...</span>
                       </div>
@@ -331,8 +330,8 @@ export default function Home() {
           )}
         </div>
 
-        {/* Input Area */}
-        <div className="border-t border-[#E9E4DE] bg-white p-4">
+        {/* Input Area - Premium Floating Search Bar */}
+        <div className="border-t border-gray-200 bg-[#f7f7f5] p-6">
           <div className="max-w-3xl mx-auto px-6">
             <div className="relative">
               <textarea
@@ -340,18 +339,18 @@ export default function Home() {
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Ask a question..."
-                rows={2}
-                className="w-full px-4 py-2.5 pr-12 bg-white border border-[#E9E4DE] hover:border-[#D9D3CC] focus:border-accent-500 rounded-xl text-[#1F1D20] text-sm placeholder:text-[#6F6B65] leading-relaxed resize-none shadow-xs transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-accent-500 focus:ring-opacity-40"
+                rows={1}
+                className="w-full px-6 py-4 pr-14 bg-white border border-gray-300 hover:border-gray-400 focus:border-orange-500 rounded-full text-gray-900 text-sm placeholder:text-gray-500 leading-relaxed resize-none shadow-lg hover:shadow-xl focus:shadow-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-30"
               />
               <button
                 onClick={sendMessage}
                 disabled={loading || !input.trim()}
-                className="absolute bottom-2 right-2 p-2 bg-accent-600 hover:bg-accent-700 active:bg-accent-800 text-white rounded-full shadow-sm transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-accent-500 focus:ring-opacity-40"
+                className="absolute bottom-2 right-2 p-3 bg-gradient-to-br from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-full shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-30"
               >
-                <Send size={14} />
+                <Send size={16} />
               </button>
             </div>
-            <div className="mt-2 text-xs text-[#6F6B65]">
+            <div className="mt-3 text-xs text-gray-500 text-center">
               Press Enter to send, Shift+Enter for new line
             </div>
           </div>

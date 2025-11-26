@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Logo from '@/components/Logo'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -23,10 +24,8 @@ export default function LoginPage() {
     <main className="min-h-screen bg-[#f7f7f5] flex items-center justify-center p-6">
       <div className="max-w-4xl w-full">
         <div className="text-center mb-16">
-          <div className="inline-flex items-center gap-3 mb-6">
-            <div className="w-16 h-16 bg-gradient-to-br from-orange-400 to-orange-600 rounded-2xl flex items-center justify-center text-white text-3xl font-bold shadow-lg">
-              O
-            </div>
+          <div className="flex justify-center mb-6">
+            <Logo size="xl" showText={false} />
           </div>
           <h1 className="text-5xl font-normal text-gray-900 mb-4">
             Welcome to OpenTA

@@ -28,8 +28,12 @@ class DocumentStore:
         sections = self._split_into_sections(text, source)
         
         for section_name, section_text in sections:
+            # Include section header in the chunk text for better context
+            # This helps with retrieval, especially for short sections like "DUE DATE"
+            full_text = f"{section_name}: {section_text.strip()}"
+            
             # Create chunks (max 500 chars for simplicity)
-            section_chunks = self._chunk_text(section_text, max_length=500)
+            section_chunks = self._chunk_text(full_text, max_length=500)
             
             for i, chunk_text in enumerate(section_chunks):
                 chunk_id = f"{source}::{section_name}::{i}"

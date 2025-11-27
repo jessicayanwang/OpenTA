@@ -1,0 +1,335 @@
+{
+  "course_id": "cs50",
+  "diagnostic_type": "adaptive_initial",
+  "version": "2024_fall",
+  "description": "Professor-seeded adaptive diagnostic for CS50. Covers foundational concepts across all course topics with mixed difficulty.",
+  "questions": [
+    {
+      "id": "q1_computational_thinking",
+      "topic": "Computational Thinking",
+      "subtopic": "Problem Solving",
+      "difficulty": 0.3,
+      "question": "What is an algorithm?",
+      "options": [
+        "A step-by-step procedure for solving a problem",
+        "A type of computer hardware",
+        "A programming language",
+        "A database management system"
+      ],
+      "correct_index": 0,
+      "explanation": "An algorithm is a step-by-step procedure for solving a problem, which is fundamental to computational thinking.",
+      "source": "Week 0 - Scratch"
+    },
+    {
+      "id": "q2_binary",
+      "topic": "Data Representation",
+      "subtopic": "Binary",
+      "difficulty": 0.4,
+      "question": "In binary, what does the number 1010 represent in decimal?",
+      "options": [
+        "10",
+        "12",
+        "8",
+        "14"
+      ],
+      "correct_index": 0,
+      "explanation": "1010 in binary = (1×8) + (0×4) + (1×2) + (0×1) = 10 in decimal",
+      "source": "Week 0 - Computational Thinking"
+    },
+    {
+      "id": "q3_c_syntax",
+      "topic": "C Programming Basics",
+      "subtopic": "Syntax",
+      "difficulty": 0.5,
+      "question": "Which of the following correctly declares an integer variable in C?",
+      "options": [
+        "int x = 5;",
+        "integer x = 5;",
+        "var x = 5;",
+        "x int = 5;"
+      ],
+      "correct_index": 0,
+      "explanation": "In C, you declare an integer using 'int' followed by the variable name",
+      "source": "Week 1 - C Basics"
+    },
+    {
+      "id": "q4_loops",
+      "topic": "Control Flow",
+      "subtopic": "Loops",
+      "difficulty": 0.5,
+      "question": "What will be printed by this C code?\n\nfor (int i = 0; i < 3; i++) {\n    printf(\"%i\", i);\n}",
+      "options": [
+        "012",
+        "123",
+        "0123",
+        "321"
+      ],
+      "correct_index": 0,
+      "explanation": "The loop starts at 0 and increments until i < 3, printing 0, 1, then 2",
+      "source": "Week 1 - Loops"
+    },
+    {
+      "id": "q5_arrays",
+      "topic": "Arrays and Strings",
+      "subtopic": "Arrays",
+      "difficulty": 0.6,
+      "question": "In C, how do you access the third element of an array named 'numbers'?",
+      "options": [
+        "numbers[2]",
+        "numbers[3]",
+        "numbers(2)",
+        "numbers.3"
+      ],
+      "correct_index": 0,
+      "explanation": "Arrays in C use zero-based indexing, so the third element is at index 2",
+      "source": "Week 2 - Arrays"
+    },
+    {
+      "id": "q6_strings",
+      "topic": "Arrays and Strings",
+      "subtopic": "Strings",
+      "difficulty": 0.5,
+      "question": "In C, a string is actually:",
+      "options": [
+        "An array of characters ending with '\\0'",
+        "A built-in data type",
+        "A number sequence",
+        "A boolean value"
+      ],
+      "correct_index": 0,
+      "explanation": "In C, strings are arrays of characters with a null terminator (\\0) at the end",
+      "source": "Week 2 - Strings"
+    },
+    {
+      "id": "q7_big_o",
+      "topic": "Algorithms",
+      "subtopic": "Complexity",
+      "difficulty": 0.7,
+      "question": "What is the Big O time complexity of binary search?",
+      "options": [
+        "O(log n)",
+        "O(n)",
+        "O(n²)",
+        "O(1)"
+      ],
+      "correct_index": 0,
+      "explanation": "Binary search divides the search space in half each time, giving O(log n) complexity",
+      "source": "Week 3 - Algorithms"
+    },
+    {
+      "id": "q8_sorting",
+      "topic": "Algorithms",
+      "subtopic": "Sorting",
+      "difficulty": 0.6,
+      "question": "Which sorting algorithm repeatedly swaps adjacent elements if they are in wrong order?",
+      "options": [
+        "Bubble sort",
+        "Merge sort",
+        "Binary search",
+        "Selection sort"
+      ],
+      "correct_index": 0,
+      "explanation": "Bubble sort works by repeatedly swapping adjacent elements that are out of order",
+      "source": "Week 3 - Sorting"
+    },
+    {
+      "id": "q9_pointers",
+      "topic": "Memory Management",
+      "subtopic": "Pointers",
+      "difficulty": 0.8,
+      "question": "What does the * operator do when used with a pointer in C?",
+      "options": [
+        "Dereferences the pointer (accesses the value it points to)",
+        "Gets the memory address of a variable",
+        "Multiplies two numbers",
+        "Declares a pointer"
+      ],
+      "correct_index": 0,
+      "explanation": "The * operator dereferences a pointer, allowing you to access the value at the memory address it contains",
+      "source": "Week 4 - Pointers"
+    },
+    {
+      "id": "q10_malloc",
+      "topic": "Memory Management",
+      "subtopic": "Dynamic Allocation",
+      "difficulty": 0.7,
+      "question": "What does malloc() do in C?",
+      "options": [
+        "Allocates memory dynamically on the heap",
+        "Frees previously allocated memory",
+        "Copies memory from one location to another",
+        "Initializes memory to zero"
+      ],
+      "correct_index": 0,
+      "explanation": "malloc() dynamically allocates memory on the heap and returns a pointer to it",
+      "source": "Week 4 - Memory"
+    },
+    {
+      "id": "q11_linked_lists",
+      "topic": "Data Structures",
+      "subtopic": "Linked Lists",
+      "difficulty": 0.7,
+      "question": "What is the main advantage of a linked list over an array?",
+      "options": [
+        "Dynamic size - can easily grow or shrink",
+        "Faster random access",
+        "Uses less memory",
+        "Simpler to implement"
+      ],
+      "correct_index": 0,
+      "explanation": "Linked lists can easily grow or shrink in size, unlike arrays which have fixed size",
+      "source": "Week 5 - Data Structures"
+    },
+    {
+      "id": "q12_hash_tables",
+      "topic": "Data Structures",
+      "subtopic": "Hash Tables",
+      "difficulty": 0.8,
+      "question": "What is the average-case time complexity for search in a hash table?",
+      "options": [
+        "O(1)",
+        "O(log n)",
+        "O(n)",
+        "O(n log n)"
+      ],
+      "correct_index": 0,
+      "explanation": "Hash tables provide O(1) average-case search time through direct key-to-index mapping",
+      "source": "Week 5 - Hash Tables"
+    },
+    {
+      "id": "q13_python_syntax",
+      "topic": "Python",
+      "subtopic": "Basics",
+      "difficulty": 0.4,
+      "question": "How do you create a list in Python?",
+      "options": [
+        "numbers = [1, 2, 3]",
+        "numbers = (1, 2, 3)",
+        "numbers = {1, 2, 3}",
+        "int numbers[3] = {1, 2, 3}"
+      ],
+      "correct_index": 0,
+      "explanation": "In Python, lists are created using square brackets []",
+      "source": "Week 6 - Python"
+    },
+    {
+      "id": "q14_python_vs_c",
+      "topic": "Python",
+      "subtopic": "Language Comparison",
+      "difficulty": 0.5,
+      "question": "What is a key difference between Python and C?",
+      "options": [
+        "Python is interpreted while C is compiled",
+        "Python doesn't support functions",
+        "C is a higher-level language",
+        "Python requires manual memory management"
+      ],
+      "correct_index": 0,
+      "explanation": "Python is an interpreted language, while C must be compiled before execution",
+      "source": "Week 6 - Python vs C"
+    },
+    {
+      "id": "q15_sql",
+      "topic": "Databases",
+      "subtopic": "SQL Basics",
+      "difficulty": 0.6,
+      "question": "Which SQL command is used to retrieve data from a database?",
+      "options": [
+        "SELECT",
+        "GET",
+        "RETRIEVE",
+        "FETCH"
+      ],
+      "correct_index": 0,
+      "explanation": "SELECT is the SQL command used to query and retrieve data from database tables",
+      "source": "Week 7 - SQL"
+    },
+    {
+      "id": "q16_html",
+      "topic": "Web Development",
+      "subtopic": "HTML",
+      "difficulty": 0.4,
+      "question": "What does HTML stand for?",
+      "options": [
+        "HyperText Markup Language",
+        "High-Level Text Markup Language",
+        "Hyper Transfer Markup Language",
+        "Home Tool Markup Language"
+      ],
+      "correct_index": 0,
+      "explanation": "HTML stands for HyperText Markup Language, used for creating web pages",
+      "source": "Week 8 - HTML"
+    },
+    {
+      "id": "q17_http",
+      "topic": "Web Development",
+      "subtopic": "HTTP",
+      "difficulty": 0.6,
+      "question": "What is the difference between GET and POST requests?",
+      "options": [
+        "GET retrieves data, POST sends data to be processed",
+        "POST retrieves data, GET sends data",
+        "They are exactly the same",
+        "GET is faster than POST"
+      ],
+      "correct_index": 0,
+      "explanation": "GET requests retrieve data from a server, while POST requests send data to be processed",
+      "source": "Week 8 - HTTP"
+    },
+    {
+      "id": "q18_flask",
+      "topic": "Web Frameworks",
+      "subtopic": "Flask",
+      "difficulty": 0.7,
+      "question": "What is Flask?",
+      "options": [
+        "A Python web framework",
+        "A database management system",
+        "A JavaScript library",
+        "A CSS framework"
+      ],
+      "correct_index": 0,
+      "explanation": "Flask is a lightweight Python web framework for building web applications",
+      "source": "Week 9 - Flask"
+    },
+    {
+      "id": "q19_academic_honesty",
+      "topic": "Course Policies",
+      "subtopic": "Academic Honesty",
+      "difficulty": 0.5,
+      "question": "According to CS50's academic honesty policy, which is NOT allowed?",
+      "options": [
+        "Viewing another student's solution before completing your own",
+        "Discussing problem approaches in English with classmates",
+        "Asking for help at office hours",
+        "Using CS50's AI assistant (cs50.ai)"
+      ],
+      "correct_index": 0,
+      "explanation": "You may not view another student's code before completing your own work",
+      "source": "Syllabus - Academic Honesty"
+    },
+    {
+      "id": "q20_late_policy",
+      "topic": "Course Policies",
+      "subtopic": "Deadlines",
+      "difficulty": 0.4,
+      "question": "How many hours of late submission time do CS50 students have for the semester?",
+      "options": [
+        "72 hours",
+        "48 hours",
+        "24 hours",
+        "No late submissions allowed"
+      ],
+      "correct_index": 0,
+      "explanation": "Students have a 72-hour late submission allowance for the semester",
+      "source": "Syllabus - Lateness Policy"
+    }
+  ],
+  "adaptive_rules": {
+    "description": "Adaptive selection rules for diagnostic",
+    "initial_sample": 5,
+    "easy_threshold": 0.4,
+    "medium_threshold": 0.7,
+    "adaptation_strategy": "If student gets 3+ easy questions right, increase difficulty. If student misses 2+ in a row, decrease difficulty and focus on prerequisites."
+  }
+}

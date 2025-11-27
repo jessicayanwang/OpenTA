@@ -1,0 +1,227 @@
+{
+  "course_id": "cs50",
+  "version": "2024-fall-notes",
+  "questions": [
+    {
+      "id": "cs50-q1",
+      "topic": "Scratch",
+      "text": "What Scratch feature lets you run scripts in parallel?",
+      "options": ["Green flag only", "Broadcast messages", "Forever loop", "Wait block"],
+      "correct_index": 1,
+      "source": "Notes Week 0 (Scratch)"
+    },
+    {
+      "id": "cs50-q2",
+      "topic": "Scratch",
+      "text": "In Scratch, a sprite’s state persists across which actions?",
+      "options": [
+        "Only within one script run",
+        "Across all scripts until reset or changed",
+        "Only if a variable is global",
+        "Only when cloned"
+      ],
+      "correct_index": 1,
+      "source": "Notes Week 0 (Scratch)"
+    },
+    {
+      "id": "cs50-q3",
+      "topic": "C Basics",
+      "text": "Which command compiles hello.c into an executable named hello?",
+      "options": ["python hello.c", "bash hello.c", "make hello", "run hello.c"],
+      "correct_index": 2,
+      "source": "Notes Week 1 (C)"
+    },
+    {
+      "id": "cs50-q4",
+      "topic": "C Basics",
+      "text": "Why is int x = 2147483647 + 1; problematic?",
+      "options": ["Floating-point imprecision", "Integer overflow", "Syntax error", "Division by zero"],
+      "correct_index": 1,
+      "source": "Notes Week 1 (C)"
+    },
+    {
+      "id": "cs50-q5",
+      "topic": "Arrays & Strings",
+      "text": "If char s[] = \"HI!\";, what is s[3]?",
+      "options": ["'!'", "'I'", "'\\u0000'", "Undefined"],
+      "correct_index": 2,
+      "source": "Notes Week 2 (Arrays)"
+    },
+    {
+      "id": "cs50-q6",
+      "topic": "Arrays & Strings",
+      "text": "What does strlen do?",
+      "options": [
+        "Counts bytes including the null terminator",
+        "Counts printable chars only",
+        "Counts chars up to but not including '\\u0000'",
+        "Counts array capacity"
+      ],
+      "correct_index": 2,
+      "source": "Notes Week 2 (Arrays)"
+    },
+    {
+      "id": "cs50-q7",
+      "topic": "Algorithms",
+      "text": "In binary search, what is the time complexity?",
+      "options": ["O(1)", "O(log n)", "O(n)", "O(n log n)"],
+      "correct_index": 1,
+      "source": "Notes Week 3 (Algorithms)"
+    },
+    {
+      "id": "cs50-q8",
+      "topic": "Algorithms",
+      "text": "Which sort is stable in its classic implementation?",
+      "options": ["Selection sort", "Bubble sort", "Insertion sort", "Merge sort"],
+      "correct_index": 3,
+      "source": "Notes Week 3 (Algorithms)"
+    },
+    {
+      "id": "cs50-q9",
+      "topic": "Memory",
+      "text": "What does free expect?",
+      "options": [
+        "Pointer from malloc/calloc/realloc",
+        "Any stack pointer",
+        "String literal pointer",
+        "File pointer"
+      ],
+      "correct_index": 0,
+      "source": "Notes Week 4 (Memory)"
+    },
+    {
+      "id": "cs50-q10",
+      "topic": "Memory",
+      "text": "What happens if you access memory after free?",
+      "options": ["Safe read", "Guaranteed crash", "Undefined behavior", "Value becomes zero"],
+      "correct_index": 2,
+      "source": "Notes Week 4 (Memory)"
+    },
+    {
+      "id": "cs50-q11",
+      "topic": "Data Structures",
+      "text": "Which data structure offers average O(1) lookup with good hashing?",
+      "options": ["Array", "Linked list", "Hash table", "Stack"],
+      "correct_index": 2,
+      "source": "Notes Week 5 (Data Structures)"
+    },
+    {
+      "id": "cs50-q12",
+      "topic": "Data Structures",
+      "text": "What’s a property of a binary search tree (BST)?",
+      "options": [
+        "Left child < node < right child",
+        "Node values are unique modulo 2",
+        "Nodes must be stored contiguously",
+        "Tree height always O(log n)"
+      ],
+      "correct_index": 0,
+      "source": "Notes Week 5 (Data Structures)"
+    },
+    {
+      "id": "cs50-q13",
+      "topic": "Python",
+      "text": "Which keyword defines a function?",
+      "options": ["function", "def", "fn", "lambda"],
+      "correct_index": 1,
+      "source": "Notes Week 6 (Python)"
+    },
+    {
+      "id": "cs50-q14",
+      "topic": "Python",
+      "text": "What does len([1,2,3]) return?",
+      "options": ["2", "3", "4", "Error"],
+      "correct_index": 1,
+      "source": "Notes Week 6 (Python)"
+    },
+    {
+      "id": "cs50-q15",
+      "topic": "SQL",
+      "text": "Which clause filters rows before grouping?",
+      "options": ["WHERE", "HAVING", "ORDER BY", "LIMIT"],
+      "correct_index": 0,
+      "source": "Notes Week 7 (SQL)"
+    },
+    {
+      "id": "cs50-q16",
+      "topic": "SQL",
+      "text": "In SQL, PRIMARY KEY implies which two constraints?",
+      "options": [
+        "NOT NULL and UNIQUE",
+        "FOREIGN and NOT NULL",
+        "DEFAULT and UNIQUE",
+        "CHECK and UNIQUE"
+      ],
+      "correct_index": 0,
+      "source": "Notes Week 7 (SQL)"
+    },
+    {
+      "id": "cs50-q17",
+      "topic": "Web",
+      "text": "Which tag best represents a standalone piece of content (e.g., blog post)?",
+      "options": ["<div>", "<section>", "<article>", "<span>"],
+      "correct_index": 2,
+      "source": "Notes Week 8 (HTML/CSS/JS)"
+    },
+    {
+      "id": "cs50-q18",
+      "topic": "Web",
+      "text": "What does flex: 1 typically do inside a flex container?",
+      "options": [
+        "Shrinks to content",
+        "Takes remaining space proportionally",
+        "Fixes width to 1px",
+        "Centers content vertically only"
+      ],
+      "correct_index": 1,
+      "source": "Notes Week 8 (HTML/CSS/JS)"
+    },
+    {
+      "id": "cs50-q19",
+      "topic": "Flask",
+      "text": "In Flask, which decorator maps a function to a route?",
+      "options": ["@route", "@app.route", "@flask", "@url"],
+      "correct_index": 1,
+      "source": "Notes Week 9 (Flask)"
+    },
+    {
+      "id": "cs50-q20",
+      "topic": "Flask",
+      "text": "What’s the purpose of Jinja’s {{ ... }} in templates?",
+      "options": [
+        "Defines CSS variables",
+        "Outputs escaped values",
+        "Comments code",
+        "Imports static files"
+      ],
+      "correct_index": 1,
+      "source": "Notes Week 9 (Flask)"
+    },
+    {
+      "id": "cs50-q21",
+      "topic": "Course Practices",
+      "text": "Why does CS50 emphasize correctness, design, style?",
+      "options": [
+        "To maximize runtime speed only",
+        "To balance working code with clarity and maintainability",
+        "To penalize long programs",
+        "To avoid using libraries"
+      ],
+      "correct_index": 1,
+      "source": "Notes Week 10 (The End) and Syllabus"
+    },
+    {
+      "id": "cs50-q22",
+      "topic": "Academic Integrity",
+      "text": "When citing sources in your final project, what’s the expectation?",
+      "options": [
+        "Cite nothing if code works",
+        "Cite only if using open-source licenses",
+        "Cite any code or ideas not originally yours",
+        "Only cite for images"
+      ],
+      "correct_index": 2,
+      "source": "Syllabus"
+    }
+  ]
+}

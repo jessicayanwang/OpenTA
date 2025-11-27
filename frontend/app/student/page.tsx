@@ -186,7 +186,7 @@ export default function Home() {
           >
             <div className="absolute left-0 w-1 h-0 bg-orange-500 rounded-r group-hover:h-full transition-all duration-200"></div>
             <BookOpen size={16} className="text-gray-500 group-hover:text-orange-500 transition-colors" />
-            <span>Study Plan</span>
+            <span>Self-study Room</span>
           </button>
           <button
             onClick={() => router.push('/assignment-help')}
@@ -396,9 +396,9 @@ export default function Home() {
                   <BookOpen size={20} className="text-green-600" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-[#1F1D20] mb-1">Create Study Plans</h3>
+                  <h3 className="font-semibold text-[#1F1D20] mb-1">Self-study Room</h3>
                   <p className="text-sm text-[#6F6B65]">
-                    Navigate to Study Plan in the sidebar to generate personalized schedules based on your goals and availability.
+                    Navigate to Self-study Room in the sidebar for adaptive daily quizzes based on your learning patterns and spaced repetition.
                   </p>
                 </div>
               </div>

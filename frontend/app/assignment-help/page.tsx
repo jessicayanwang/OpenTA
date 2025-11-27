@@ -396,7 +396,7 @@ Quick tip: Select your problem from the dropdown above, then start asking questi
           >
             <div className="absolute left-0 w-1 h-0 bg-orange-500 rounded-r group-hover:h-full transition-all duration-200"></div>
             <BookOpen size={16} className="text-gray-500 group-hover:text-orange-500 transition-colors" />
-            <span>Study Plan</span>
+            <span>Self-study Room</span>
           </button>
           <button
             onClick={() => router.push('/assignment-help')}

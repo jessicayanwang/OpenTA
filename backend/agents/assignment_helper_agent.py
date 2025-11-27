@@ -1,6 +1,7 @@
 """
 Assignment Helper Agent - Refactored for Multi-Agent Framework
 Provides Socratic guidance without giving direct answers
+Now with behavioral tracking and adaptive interventions
 """
 import uuid
 from .base_agent import BaseAgent, AgentCapability
@@ -10,14 +11,17 @@ from models import AssignmentHelpResponse
 class AssignmentHelperAgent(BaseAgent):
     """
     Specialized agent for helping with assignments using Socratic method
+    Integrates behavioral tracking to detect struggle and offer interventions
     """
     
-    def __init__(self):
+    def __init__(self, behavioral_tracker=None):
         super().__init__(
             agent_id="assignment_helper",
             name="Assignment Helper Agent",
             capabilities=[AgentCapability.PROVIDE_HINTS, AgentCapability.RETRIEVE_DOCUMENTS]
         )
+        self.behavioral_tracker = behavioral_tracker
+        self.active_sessions = {}  # Track session IDs per student
     
     async def process(self, message: AgentMessage) -> AgentResponse:
         """
@@ -36,6 +40,14 @@ class AssignmentHelperAgent(BaseAgent):
             
             # Get student profile
             student_profile = self.memory.get_or_create_student_profile(student_id)
+            
+            # Start or continue behavioral tracking session
+            session_id = self._get_or_create_session(student_id, problem_number or "general")
+            
+            # Log this as a question event in behavioral tracker
+            if self.behavioral_tracker:
+                self.behavioral_tracker.log_question(session_id, question)
+                self.behavioral_tracker.update_time_on_task(session_id)
             
             # Check guardrails
             guardrail_tool = self.get_tool("guardrail")
@@ -103,6 +115,15 @@ class AssignmentHelperAgent(BaseAgent):
             if problem_number:
                 student_profile.increment_hint_usage(problem_number)
             
+            # Track hint request in behavioral tracker
+            if self.behavioral_tracker:
+                self.behavioral_tracker.log_hint_request(session_id)
+            
+            # Check if intervention should be offered
+            intervention = None
+            if self.behavioral_tracker:
+                intervention = self.behavioral_tracker.should_offer_intervention(session_id)
+            
             # Log analytics
             analytics_tool = self.get_tool("analytics")
             if analytics_tool:
@@ -126,12 +147,20 @@ class AssignmentHelperAgent(BaseAgent):
                 citations=citations
             )
             
+            response_data = {
+                'help_response': help_response.dict(),
+                'conversation_id': conversation_id,
+                'session_id': session_id
+            }
+            
+            # Add intervention if recommended
+            if intervention and intervention.get('offer'):
+                response_data['intervention'] = intervention
+                self.log(f"Offering intervention: {intervention.get('type')}")
+            
             return self.create_response(
                 success=True,
-                data={
-                    'help_response': help_response.dict(),
-                    'conversation_id': conversation_id
-                },
+                data=response_data,
                 confidence=0.8,
                 reasoning="Provided Socratic guidance"
             )
@@ -292,3 +321,26 @@ class AssignmentHelperAgent(BaseAgent):
         ]
         
         return guidance, concepts, resources, next_steps
+    
+    def _get_or_create_session(self, student_id: str, topic: str) -> str:
+        """Get or create a behavioral tracking session for this student"""
+        if not self.behavioral_tracker:
+            return f"session_{student_id}_{uuid.uuid4().hex[:8]}"
+        
+        # Check if student has an active session
+        if student_id in self.active_sessions:
+            return self.active_sessions[student_id]
+        
+        # Create new session
+        session_id = f"session_{student_id}_{uuid.uuid4().hex[:8]}"
+        self.behavioral_tracker.start_session(session_id, student_id, topic)
+        self.active_sessions[student_id] = session_id
+        
+        return session_id
+    
+    def end_student_session(self, student_id: str):
+        """End a student's behavioral tracking session"""
+        if student_id in self.active_sessions and self.behavioral_tracker:
+            session_id = self.active_sessions[student_id]
+            self.behavioral_tracker.end_session(session_id)
+            del self.active_sessions[student_id]

@@ -35,6 +35,8 @@ class StudyTask(BaseModel):
     focus: str
     duration_hours: float
     resources: Optional[List[str]] = None
+    rationale: Optional[str] = None
+    source: Optional[str] = None
 
 class WeekPlan(BaseModel):
     week_number: int
@@ -104,6 +106,30 @@ class CreateCanonicalAnswerRequest(BaseModel):
     question: str
     answer_markdown: str
     citations: List[Citation]
+
+# Diagnostic models
+class DiagnosticQuestion(BaseModel):
+    id: str
+    topic: str
+    text: str
+    options: List[str]
+    correct_index: int
+    source: str
+
+class DiagnosticResponse(BaseModel):
+    course_id: str = "cs50"
+    answers: Dict[str, int]  # question_id -> option index
+    hours_per_week: Optional[int] = 6
+    current_level: Optional[str] = "beginner"
+    constraints: Optional[List[str]] = None
+
+class DiagnosticResult(BaseModel):
+    total: int
+    correct: int
+    incorrect: int
+    weak_topics: List[str]
+    topic_breakdown: Dict[str, Dict[str, int]]
+    first_week_plan: WeekPlan
 
 # Unresolved Queue models
 class UnresolvedReason(str, Enum):

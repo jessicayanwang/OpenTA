@@ -6,6 +6,8 @@ All questions are content-scoped and traceable to source documents
 from typing import List, Dict, Optional
 from datetime import datetime
 import re
+import os
+import json
 from dataclasses import dataclass
 from openai import OpenAI
 from document_store import DocumentStore, DocumentChunk
@@ -45,31 +47,56 @@ class PopQuizService:
         self.use_openai = bool(os.getenv("OPENAI_API_KEY"))
         if self.use_openai:
             self.openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-            print("  ✓ OpenAI enabled for quiz generation")
+            print("  ✓ OpenAI enabled for on-demand quiz generation")
         else:
             self.openai_client = None
             print("  ⚠ OpenAI not configured - using simple patterns")
         
-        # Pre-generated question bank from course materials
-        self.question_bank: Dict[str, List[PopQuizItem]] = {}
-        self._initialize_question_bank()
+        # Cache for generated questions (to avoid regenerating)
+        self.question_cache: Dict[str, PopQuizItem] = {}
+        print("  ✓ Pop Quiz Service ready (on-demand generation)")
     
-    def _initialize_question_bank(self):
+    def _determine_quiz_scope(self, student_id: str, quiz_type: str = "daily") -> Dict:
         """
-        Initialize question bank from course materials
-        For MVP: Use simple pattern matching + templates
-        For production: Use LLM to generate questions from chunks
+        Determine what material to quiz on based on:
+        1. Student's weak topics (from mastery tracking)
+        2. Spaced repetition schedule (what's due for review)
+        3. Current course progress (what's been taught)
+        4. Request type (daily vs exam prep)
         """
-        # Group chunks by topic
-        topic_chunks = self._group_chunks_by_topic()
+        scope = {
+            "weak_topics": [],
+            "due_for_review": [],
+            "recent_topics": [],
+            "material_cutoff": None
+        }
         
-        for topic, chunks in topic_chunks.items():
-            self.question_bank[topic] = []
-            
-            # Generate questions from chunks
-            for chunk in chunks:
-                questions = self._generate_questions_from_chunk(chunk, topic)
-                self.question_bank[topic].extend(questions)
+        # 1. Get weak topics from mastery
+        if student_id in self.spaced_rep_engine.student_mastery:
+            for topic, mastery in self.spaced_rep_engine.student_mastery[student_id].items():
+                if mastery.mastery_score < 0.6:
+                    scope["weak_topics"].append(topic)
+        
+        # 2. Get topics due for review (forgetting curve)
+        # Check cards within each topic's mastery
+        if student_id in self.spaced_rep_engine.student_mastery:
+            now = datetime.now()
+            for topic, mastery in self.spaced_rep_engine.student_mastery[student_id].items():
+                for card in mastery.cards:
+                    if card.next_review and card.next_review <= now:
+                        if topic not in scope["due_for_review"]:
+                            scope["due_for_review"].append(topic)
+                        break
+        
+        # 3. Determine material scope based on quiz type
+        if quiz_type == "daily":
+            # Daily: Last week's material + weak topics
+            scope["material_cutoff"] = "last_week"
+        elif quiz_type == "exam":
+            # Exam: All exam-relevant material
+            scope["material_cutoff"] = "exam_topics"
+        
+        return scope
     
     def _group_chunks_by_topic(self) -> Dict[str, List[DocumentChunk]]:
         """Group document chunks by topic based on source and section"""
@@ -275,46 +302,54 @@ Return ONLY a JSON array with this exact format:
         num_items: int = 3
     ) -> List[PopQuizItem]:
         """
-        Get daily pop quiz items based on spaced repetition and weak topics
-        
-        Strategy:
-        1. Check for due review cards (spaced repetition)
-        2. If student has weak topics, include 1-2 items from those
-        3. Mix in 1 new item from upcoming course material
+        ADAPTIVE: Generate quiz on-demand based on:
+        1. Weak topics (what student got wrong)
+        2. Spaced repetition schedule (forgetting curve)
+        3. Recent course material (what's been taught)
         """
         quiz_items = []
         
-        # Get due review cards
-        due_cards = self.spaced_rep_engine.get_due_cards(student_id, limit=num_items)
+        # STEP 1: Determine scope (multi-agent: context analyzer)
+        scope = self._determine_quiz_scope(student_id, quiz_type="daily")
         
-        if due_cards:
-            # Convert review cards to quiz items
-            for card in due_cards[:2]:  # Max 2 review items
-                quiz_items.append(self._card_to_quiz_item(card))
+        # STEP 2: Prioritize topics to quiz
+        topics_to_quiz = []
         
-        # Fill remaining slots with new items from weak topics
-        weak_topics = self.spaced_rep_engine.get_weak_topics(student_id)
+        # Priority 1: Topics due for review (forgetting curve)
+        topics_to_quiz.extend(list(set(scope["due_for_review"]))[:2])
         
-        if weak_topics and len(quiz_items) < num_items:
-            # Pick from weakest topic
-            weak_topic = weak_topics[0][0]
-            available = self.question_bank.get(weak_topic, [])
+        # Priority 2: Weak topics (mastery < 60%)
+        if len(topics_to_quiz) < num_items:
+            topics_to_quiz.extend([t for t in scope["weak_topics"] if t not in topics_to_quiz][:1])
+        
+        # Priority 3: Fill with general review topics
+        if len(topics_to_quiz) < num_items:
+            all_topics = list(self.spaced_rep_engine.student_mastery.get(student_id, {}).keys())
+            for topic in all_topics:
+                if topic not in topics_to_quiz:
+                    topics_to_quiz.append(topic)
+                    if len(topics_to_quiz) >= num_items:
+                        break
+        
+        # If no topics yet (new student), use general topics
+        if not topics_to_quiz:
+            topics_to_quiz = ["C Programming Basics", "Algorithms", "Memory"]
+        
+        # STEP 3: Generate questions ON-DEMAND for each topic
+        for topic in topics_to_quiz[:num_items]:
+            # Use retriever to find relevant chunks for this topic
+            query = f"{topic} concepts and examples"
+            chunks = self.retriever.retrieve(query, top_k=1)
             
-            # Filter out already seen questions
-            student_mastery = self.spaced_rep_engine.get_or_create_mastery(student_id, weak_topic)
-            seen_ids = {card.card_id for card in student_mastery.cards}
-            
-            new_items = [q for q in available if q.question_id not in seen_ids]
-            
-            if new_items:
-                quiz_items.append(new_items[0])
-        
-        # Fill remaining with general review
-        while len(quiz_items) < num_items:
-            # Pick a random topic that has questions
-            for topic, items in self.question_bank.items():
-                if items and len(quiz_items) < num_items:
-                    quiz_items.append(items[0])
+            if chunks:
+                chunk = chunks[0][0]  # Get top chunk
+                # Generate question on-demand
+                questions = self._generate_questions_from_chunk(chunk, topic)
+                if questions:
+                    question = questions[0]
+                    quiz_items.append(question)
+                    # Cache for later submission
+                    self.question_cache[question.question_id] = question
         
         return quiz_items[:num_items]
     
@@ -325,22 +360,69 @@ Return ONLY a JSON array with this exact format:
         num_items: int = 2
     ) -> List[PopQuizItem]:
         """
-        Get quick concept check items for a specific topic
-        Used during assignment help when student is struggling
+        ADAPTIVE: Generate concept check on-demand for struggling students
+        Used during assignment help when behavioral signals detected
         """
-        available = self.question_bank.get(topic, [])
+        quiz_items = []
         
-        if not available:
-            # Try to find related topic
-            for t, items in self.question_bank.items():
-                if topic.lower() in t.lower() and items:
-                    available = items
-                    break
+        # Use retriever to find easiest/foundational chunks for this topic
+        query = f"{topic} introduction basics fundamentals"
+        chunks = self.retriever.retrieve(query, top_k=2)
         
-        # Get easiest items first for concept check
-        available_sorted = sorted(available, key=lambda x: x.difficulty)
+        for chunk, _ in chunks[:num_items]:
+            questions = self._generate_questions_from_chunk(chunk, topic)
+            if questions:
+                question = questions[0]
+                quiz_items.append(question)
+                # Cache for later submission
+                self.question_cache[question.question_id] = question
         
-        return available_sorted[:num_items]
+        return quiz_items[:num_items]
+    
+    def get_exam_prep_questions(
+        self,
+        student_id: str,
+        exam_topics: List[str],
+        num_items: int = 10
+    ) -> List[PopQuizItem]:
+        """
+        ADAPTIVE: Generate exam prep questions based on exam scope
+        Multi-agent approach:
+        1. Determine exam material cutoff
+        2. Identify weak topics within exam scope
+        3. Generate harder questions from exam-relevant chunks
+        """
+        quiz_items = []
+        
+        # Get weak topics within exam scope
+        weak_in_scope = []
+        if student_id in self.spaced_rep_engine.student_mastery:
+            for topic, mastery in self.spaced_rep_engine.student_mastery[student_id].items():
+                if topic in exam_topics and mastery.mastery_score < 0.7:
+                    weak_in_scope.append((topic, mastery.mastery_score))
+        
+        # Sort by weakness
+        weak_in_scope.sort(key=lambda x: x[1])
+        
+        # Prioritize questions from weak exam topics
+        topics_to_quiz = [t for t, _ in weak_in_scope] + exam_topics
+        
+        for topic in topics_to_quiz[:num_items]:
+            query = f"{topic} advanced concepts practice problems"
+            chunks = self.retriever.retrieve(query, top_k=1)
+            
+            if chunks:
+                chunk = chunks[0][0]
+                questions = self._generate_questions_from_chunk(chunk, topic)
+                if questions:
+                    question = questions[0]
+                    quiz_items.append(question)
+                    # Cache for later submission
+                    self.question_cache[question.question_id] = question
+                    if len(quiz_items) >= num_items:
+                        break
+        
+        return quiz_items[:num_items]
     
     def submit_answer(
         self,

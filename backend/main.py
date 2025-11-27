@@ -164,11 +164,12 @@ async def startup_event():
     exam_runway_service = ExamRunwayService(spaced_rep_engine)
     reminder_service = ReminderService()
     print("✅ Adaptive Learning Ready!")
-    print(f"   - Spaced Repetition Engine")
-    print(f"   - Pop Quiz Service ({len(pop_quiz_service.question_bank)} topics)")
-    print(f"   - Behavioral Tracker (integrated with Assignment Helper)")
-    print(f"   - Exam Runway Service")
+    print(f"   - Spaced Repetition Engine (SM-2 algorithm)")
+    print(f"   - Pop Quiz Service (ON-DEMAND generation)")
+    print(f"   - Behavioral Tracker (7 signal types)")
+    print(f"   - Exam Runway Service (7-day prep)")
     print(f"   - Reminder Service (email {'enabled' if reminder_service.email_enabled else 'disabled'})")
+    print(f"   ✨ Questions generated adaptively based on student context")
     
     print("\n✅ Multi-Agent System Ready!")
     print(f"   Registered agents: {len(orchestrator.agents)}")
@@ -644,18 +645,11 @@ async def submit_answer(request: SubmitAnswerRequest):
     if not pop_quiz_service:
         raise HTTPException(status_code=503, detail="Adaptive learning not initialized")
     
-    # Find the quiz item
-    quiz_item = None
-    for topic_items in pop_quiz_service.question_bank.values():
-        for item in topic_items:
-            if item.question_id == request.question_id:
-                quiz_item = item
-                break
-        if quiz_item:
-            break
+    # Get quiz item from cache (saved when quiz was generated)
+    quiz_item = pop_quiz_service.question_cache.get(request.question_id)
     
     if not quiz_item:
-        raise HTTPException(status_code=404, detail="Question not found")
+        raise HTTPException(status_code=404, detail="Question not found - quiz may have expired")
     
     result = pop_quiz_service.submit_answer(
         request.student_id,

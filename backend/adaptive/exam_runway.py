@@ -2,7 +2,7 @@
 Exam Runway - 7-Day Exam Preparation System
 Generates compressed study plans and daily gap checks when exam is approaching
 """
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional
 from dataclasses import dataclass
 
@@ -48,12 +48,17 @@ class ExamRunwayService:
         """
         Generate a 7-day exam preparation plan
         """
-        days_until = (exam_date - datetime.now()).days
+        # Make both datetimes timezone-aware for comparison
+        now = datetime.now(timezone.utc)
+        if exam_date.tzinfo is None:
+            exam_date = exam_date.replace(tzinfo=timezone.utc)
+        
+        days_until = (exam_date - now).days
         
         if days_until > 7:
             # Generate preview (what plan will look like when closer)
             days_until = 7
-            exam_date = datetime.now() + timedelta(days=7)
+            exam_date = now + timedelta(days=7)
         
         # Identify weak topics from spaced repetition data
         weak_topics = self.spaced_rep_engine.get_weak_topics(student_id, threshold=0.7)
@@ -69,7 +74,7 @@ class ExamRunwayService:
         # Generate daily targets for each day
         daily_targets = []
         for day in range(1, min(days_until, 7) + 1):
-            target_date = datetime.now() + timedelta(days=day)
+            target_date = now + timedelta(days=day)
             target = self._generate_daily_target(
                 day_number=day,
                 target_date=target_date,

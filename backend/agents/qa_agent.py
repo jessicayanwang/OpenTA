@@ -51,6 +51,10 @@ class QAAgent(BaseAgent):
                     confidence=0.0
                 )
             
+            # Adjust retrieval based on question type
+            question_lower = question.lower()
+            is_factual_query = any(word in question_lower for word in ['when', 'due', 'deadline', 'date', 'time'])
+            
             retrieved_chunks = await retrieval_tool.execute({
                 'query': question,
                 'top_k': 3
@@ -76,8 +80,11 @@ class QAAgent(BaseAgent):
             else:
                 # Use citation tool to format citations
                 citation_tool = self.get_tool("citation")
+                # For factual queries, show only 1 citation; for complex queries, show up to 2
+                max_citations = 1 if is_factual_query else 2
                 citations = await citation_tool.execute({
-                    'chunks': retrieved_chunks
+                    'chunks': retrieved_chunks,
+                    'max_citations': max_citations
                 }) if citation_tool else []
                 
                 # Try to use OpenAI for better answers

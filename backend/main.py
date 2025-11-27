@@ -41,8 +41,8 @@ from tools.openai_tool import OpenAITool
 from protocols.agent_message import AgentMessage, MessageType
 import os
 from dotenv import load_dotenv
-from diagnostic_service import DiagnosticService
-from learning_flow_service import LearningFlowService
+# from diagnostic_service import DiagnosticService
+# from learning_flow_service import LearningFlowService
 
 # Adaptive Learning Imports
 from adaptive.spaced_repetition import SpacedRepetitionEngine, ReviewResult
@@ -74,8 +74,8 @@ professor_service = None  # Will be initialized with embedder in startup
 shared_memory = SharedMemory()
 orchestrator = None
 study_plan_agent = None
-diagnostic_service = None
-learning_flow_service = None
+# diagnostic_service = None
+# learning_flow_service = None
 
 # Adaptive Learning Components
 spaced_rep_engine = None
@@ -87,7 +87,7 @@ reminder_service = None
 @app.on_event("startup")
 async def startup_event():
     """Initialize the multi-agent system on startup"""
-    global retriever, orchestrator, professor_service, diagnostic_service, learning_flow_service, study_plan_agent
+    global retriever, orchestrator, professor_service, study_plan_agent
     global spaced_rep_engine, pop_quiz_service, behavioral_tracker, exam_runway_service, reminder_service
     
     print("🚀 Starting OpenTA Multi-Agent System...")
@@ -112,9 +112,9 @@ async def startup_event():
     professor_service = ProfessorService(embedder=retriever.embedder)
     # Initialize study plan agent (also reused for diagnostics follow-ups)
     study_plan_agent = StudyPlanAgent()
-    diagnostic_data_path = data_dir / "cs50_initial_diagnostic.json"
-    diagnostic_service = DiagnosticService(diagnostic_data_path, study_plan_agent)
-    learning_flow_service = LearningFlowService(diagnostic_service)
+    # diagnostic_data_path = data_dir / "cs50_initial_diagnostic.json"
+    # diagnostic_service = DiagnosticService(diagnostic_data_path, study_plan_agent)
+    # learning_flow_service = LearningFlowService(diagnostic_service)
     
     # Initialize tools
     retrieval_tool = RetrievalTool(retriever)
@@ -295,40 +295,42 @@ async def study_plan(request: StudyPlanRequest, student_id: str = "student1"):
     print(f"✅ Study plan generated: {plan.duration_weeks} weeks, {plan.hours_per_week} hrs/week")
     return plan
 
-@app.get("/api/diagnostic", response_model=List[DiagnosticQuestion])
-async def get_diagnostic(course_id: str = "cs50"):
-    """Return professor-seeded diagnostic questions for onboarding."""
-    if not diagnostic_service:
-        raise HTTPException(status_code=503, detail="Diagnostic service not initialized")
-    return diagnostic_service.get_questions(course_id)
+# Old diagnostic endpoints - replaced by new adaptive system
+# @app.get("/api/diagnostic", response_model=List[DiagnosticQuestion])
+# async def get_diagnostic(course_id: str = "cs50"):
+#     """Return professor-seeded diagnostic questions for onboarding."""
+#     if not diagnostic_service:
+#         raise HTTPException(status_code=503, detail="Diagnostic service not initialized")
+#     return diagnostic_service.get_questions(course_id)
 
-@app.post("/api/diagnostic/submit", response_model=DiagnosticResult)
-async def submit_diagnostic(request: DiagnosticResponse):
-    """Score diagnostic responses, cluster weak topics, and return an annotated first-week plan."""
-    if not diagnostic_service:
-        raise HTTPException(status_code=503, detail="Diagnostic service not initialized")
-    return diagnostic_service.score_and_plan(request)
+# @app.post("/api/diagnostic/submit", response_model=DiagnosticResult)
+# async def submit_diagnostic(request: DiagnosticResponse):
+#     """Score diagnostic responses, cluster weak topics, and return an annotated first-week plan."""
+#     if not diagnostic_service:
+#         raise HTTPException(status_code=503, detail="Diagnostic service not initialized")
+#     return diagnostic_service.score_and_plan(request)
 
-@app.get("/api/pop-quiz")
-async def pop_quiz(course_id: str = "cs50", count: int = 4):
-    """Spaced pop quiz items sourced only from course materials."""
-    if not learning_flow_service:
-        raise HTTPException(status_code=503, detail="Learning flow service not initialized")
-    return learning_flow_service.spaced_pop_quiz(course_id, count)
-
-@app.get("/api/exam/runway")
-async def exam_runway(course_id: str = "cs50", days_to_exam: int = 7):
-    """Exam runway CTA with a compact gap check derived from in-scope materials."""
-    if not learning_flow_service:
-        raise HTTPException(status_code=503, detail="Learning flow service not initialized")
-    return learning_flow_service.exam_runway(course_id, days_to_exam)
-
-@app.get("/api/assignment/concept-check")
-async def assignment_concept_check(course_id: str = "cs50", pset: str = "pset1", hint_count: int = 2):
-    """Assignment-period micro-adaptivity: two-item concept check when hints/dwell spike."""
-    if not learning_flow_service:
-        raise HTTPException(status_code=503, detail="Learning flow service not initialized")
-    return learning_flow_service.assignment_concept_check(course_id, pset, hint_count)
+# Old endpoints - replaced by new adaptive learning system
+# @app.get("/api/pop-quiz")
+# async def pop_quiz(course_id: str = "cs50", count: int = 4):
+#     """Spaced pop quiz items sourced only from course materials."""
+#     if not learning_flow_service:
+#         raise HTTPException(status_code=503, detail="Learning flow service not initialized")
+#     return learning_flow_service.spaced_pop_quiz(course_id, count)
+# 
+# @app.get("/api/exam/runway")
+# async def exam_runway(course_id: str = "cs50", days_to_exam: int = 7):
+#     """Exam runway CTA with a compact gap check derived from in-scope materials."""
+#     if not learning_flow_service:
+#         raise HTTPException(status_code=503, detail="Learning flow service not initialized")
+#     return learning_flow_service.exam_runway(course_id, days_to_exam)
+# 
+# @app.get("/api/assignment/concept-check")
+# async def assignment_concept_check(course_id: str = "cs50", pset: str = "pset1", hint_count: int = 2):
+#     """Assignment-period micro-adaptivity: two-item concept check when hints/dwell spike."""
+#     if not learning_flow_service:
+#         raise HTTPException(status_code=503, detail="Learning flow service not initialized")
+#     return learning_flow_service.assignment_concept_check(course_id, pset, hint_count)
 
 @app.get("/api/faq")
 async def get_faq(course_id: str = "cs50"):

@@ -1,16 +1,16 @@
 """
 Pop Quiz Service
 Generates quiz items strictly from course content (syllabus + notes)
-All questions are grounded in actual course materials
+All questions are content-scoped and traceable to source documents
 """
 from typing import List, Dict, Optional
 from datetime import datetime
 import re
 from dataclasses import dataclass
-
-from adaptive.spaced_repetition import SpacedRepetitionEngine, ReviewCard
+from openai import OpenAI
 from document_store import DocumentStore, DocumentChunk
 from retrieval import HybridRetriever
+from adaptive.spaced_repetition import SpacedRepetitionEngine, ReviewCard
 
 @dataclass
 class PopQuizItem:
@@ -40,6 +40,15 @@ class PopQuizService:
         self.document_store = document_store
         self.retriever = retriever
         self.spaced_rep_engine = spaced_rep_engine
+        
+        # Initialize OpenAI client if API key available
+        self.use_openai = bool(os.getenv("OPENAI_API_KEY"))
+        if self.use_openai:
+            self.openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+            print("  ✓ OpenAI enabled for quiz generation")
+        else:
+            self.openai_client = None
+            print("  ⚠ OpenAI not configured - using simple patterns")
         
         # Pre-generated question bank from course materials
         self.question_bank: Dict[str, List[PopQuizItem]] = {}
@@ -104,11 +113,88 @@ class PopQuizService:
         else:
             return "General CS50"
     
+    def _generate_questions_with_openai(self, chunk: DocumentChunk, topic: str) -> List[PopQuizItem]:
+        """
+        Use OpenAI to generate high-quality quiz questions from content
+        """
+        if not self.use_openai:
+            return []
+        
+        try:
+            prompt = f"""Based on the following course content, generate 2 multiple-choice quiz questions.
+
+Content:
+{chunk.text[:800]}
+
+Generate questions that:
+1. Test understanding of key concepts (not memorization)
+2. Have 4 plausible options (not obvious wrong answers)
+3. Are clear and unambiguous
+4. Focus on practical application
+
+Return ONLY a JSON array with this exact format:
+[
+  {{
+    "question": "...",
+    "options": ["...", "...", "...", "..."],
+    "correct_index": 0,
+    "explanation": "..."
+  }}
+]"""
+
+            response = self.openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "You are a CS50 teaching assistant creating quiz questions. Return only valid JSON."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.7,
+                max_tokens=800
+            )
+            
+            content = response.choices[0].message.content.strip()
+            # Remove markdown code blocks if present
+            if content.startswith("```"):
+                content = content.split("```")[1]
+                if content.startswith("json"):
+                    content = content[4:]
+            
+            questions_data = json.loads(content)
+            
+            # Convert to PopQuizItem objects
+            questions = []
+            for i, q_data in enumerate(questions_data[:2]):  # Max 2 per chunk
+                question_id = f"{chunk.source}_{chunk.section}_ai_{i}"
+                questions.append(PopQuizItem(
+                    question_id=question_id,
+                    topic=topic,
+                    subtopic=chunk.section,
+                    question=q_data["question"],
+                    options=q_data["options"],
+                    correct_index=q_data["correct_index"],
+                    difficulty=0.6,
+                    source_citation=f"{chunk.source} - {chunk.section}",
+                    explanation=q_data.get("explanation", "Refer to course materials")
+                ))
+            
+            return questions
+            
+        except Exception as e:
+            print(f"  ⚠ OpenAI question generation failed: {str(e)}")
+            return []
+    
     def _generate_questions_from_chunk(self, chunk: DocumentChunk, topic: str) -> List[PopQuizItem]:
         """
         Generate quiz questions from a document chunk
-        Uses pattern matching for concepts, definitions, and procedures
+        Tries OpenAI first, falls back to pattern matching
         """
+        # Try OpenAI first if available
+        if self.use_openai:
+            questions = self._generate_questions_with_openai(chunk, topic)
+            if questions:
+                return questions
+        
+        # Fallback to pattern matching if OpenAI not available or failed
         questions = []
         text = chunk.text.lower()
         

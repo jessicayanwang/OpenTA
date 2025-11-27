@@ -299,7 +299,7 @@ Return ONLY a JSON array with this exact format:
     def get_daily_quiz(
         self, 
         student_id: str, 
-        num_items: int = 3
+        num_items: int = 5
     ) -> List[PopQuizItem]:
         """
         ADAPTIVE: Generate quiz on-demand based on:
@@ -312,33 +312,44 @@ Return ONLY a JSON array with this exact format:
         # STEP 1: Determine scope (multi-agent: context analyzer)
         scope = self._determine_quiz_scope(student_id, quiz_type="daily")
         
-        # STEP 2: Prioritize topics to quiz
-        topics_to_quiz = []
+        # STEP 2: Prioritize subtopics to quiz (more specific reinforcement)
+        subtopics_to_quiz = []
         
-        # Priority 1: Topics due for review (forgetting curve)
-        topics_to_quiz.extend(list(set(scope["due_for_review"]))[:2])
+        # Priority 1: Subtopics due for review (forgetting curve)
+        # These are specific concepts the student learned and needs to review
+        subtopics_to_quiz.extend(list(set(scope["due_for_review"]))[:3])
         
-        # Priority 2: Weak topics (mastery < 60%)
-        if len(topics_to_quiz) < num_items:
-            topics_to_quiz.extend([t for t in scope["weak_topics"] if t not in topics_to_quiz][:1])
+        # Priority 2: Weak subtopics (mastery < 60%)
+        # Focus on specific concepts they struggle with
+        if len(subtopics_to_quiz) < num_items:
+            weak_to_add = [t for t in scope["weak_topics"] if t not in subtopics_to_quiz]
+            subtopics_to_quiz.extend(weak_to_add[:num_items - len(subtopics_to_quiz)])
         
-        # Priority 3: Fill with general review topics
-        if len(topics_to_quiz) < num_items:
-            all_topics = list(self.spaced_rep_engine.student_mastery.get(student_id, {}).keys())
-            for topic in all_topics:
-                if topic not in topics_to_quiz:
-                    topics_to_quiz.append(topic)
-                    if len(topics_to_quiz) >= num_items:
+        # Priority 3: Fill with general review subtopics
+        if len(subtopics_to_quiz) < num_items:
+            all_subtopics = list(self.spaced_rep_engine.student_mastery.get(student_id, {}).keys())
+            for subtopic in all_subtopics:
+                if subtopic not in subtopics_to_quiz:
+                    subtopics_to_quiz.append(subtopic)
+                    if len(subtopics_to_quiz) >= num_items:
                         break
         
-        # If no topics yet (new student), use general topics
-        if not topics_to_quiz:
-            topics_to_quiz = ["C Programming Basics", "Algorithms", "Memory"]
+        # If no subtopics yet (new student), use broad topics for initial exploration
+        if not subtopics_to_quiz:
+            subtopics_to_quiz = ["C Programming Basics", "Algorithms", "Memory Management", "Arrays and Strings", "Data Structures"]
         
-        # STEP 3: Generate questions ON-DEMAND for each topic
-        for topic in topics_to_quiz[:num_items]:
-            # Use retriever to find relevant chunks for this topic
-            query = f"{topic} concepts and examples"
+        # STEP 3: Generate questions ON-DEMAND for each subtopic
+        for subtopic_key in subtopics_to_quiz[:num_items]:
+            # Parse subtopic key (format: "Topic: Subtopic" or just "Topic")
+            if ": " in subtopic_key:
+                topic, specific_subtopic = subtopic_key.split(": ", 1)
+                # Search for the specific subtopic content
+                query = f"{topic} {specific_subtopic} concepts and examples"
+            else:
+                topic = subtopic_key
+                # Broad topic search for new students
+                query = f"{topic} concepts and examples"
+            
             chunks = self.retriever.retrieve(query, top_k=1)
             
             if chunks:
@@ -439,10 +450,13 @@ Return ONLY a JSON array with this exact format:
         # Convert to review card if not already tracked
         card = self._quiz_item_to_card(quiz_item)
         
-        # Check if card exists in student's deck
+        # Track mastery at SUBTOPIC level for granular reinforcement
+        # Use "topic: subtopic" as the tracking key
+        mastery_key = f"{quiz_item.topic}: {quiz_item.subtopic}" if quiz_item.subtopic else quiz_item.topic
+        
         student_mastery = self.spaced_rep_engine.get_or_create_mastery(
             student_id, 
-            quiz_item.topic
+            mastery_key
         )
         
         existing_card = None
@@ -482,6 +496,8 @@ Return ONLY a JSON array with this exact format:
             "next_review": updated_card.next_review.isoformat() if updated_card.next_review else None,
             "mastery_update": {
                 "topic": quiz_item.topic,
+                "subtopic": quiz_item.subtopic,
+                "mastery_key": mastery_key,  # Show the specific tracking key
                 "new_mastery": student_mastery.mastery_score,
                 "confidence": student_mastery.confidence
             }

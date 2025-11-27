@@ -603,10 +603,10 @@ async def update_guardrail_settings(
 # ============================================================================
 
 @app.get("/api/adaptive/daily-quiz", response_model=DailyQuizResponse)
-async def get_daily_quiz(student_id: str = "student1", count: int = 3):
+async def get_daily_quiz(student_id: str = "student1", count: int = 5):
     """
     Get personalized daily pop quiz (spaced repetition)
-    Returns 3 items based on forgetting curve, weak topics, and new material
+    Returns 5 items based on forgetting curve, weak topics, and new material
     """
     if not pop_quiz_service:
         raise HTTPException(status_code=503, detail="Adaptive learning not initialized")

@@ -70,7 +70,7 @@ export default function StudyPlanPage() {
     setViewingDate(null) // Close date view
     setShowHistory(false) // Hide history panel
     try {
-      const res = await fetch(`http://localhost:8000/api/adaptive/daily-quiz?student_id=${studentId}&count=3`)
+      const res = await fetch(`http://localhost:8000/api/adaptive/daily-quiz?student_id=${studentId}&count=5`)
       const data = await res.json()
       setCurrentQuiz(data.items || [])
       setCurrentQuestionIndex(0)
@@ -249,7 +249,7 @@ export default function StudyPlanPage() {
             <div>
               <h3 className="font-bold text-base mb-1.5">Daily Quiz Ready! 📚</h3>
               <p className="text-xs text-white/90 mb-2">
-                3 personalized questions based on your weak topics
+                5 personalized questions based on your weak topics
               </p>
               {examRunway && (
                 <p className="text-xs text-white/80 mb-2">

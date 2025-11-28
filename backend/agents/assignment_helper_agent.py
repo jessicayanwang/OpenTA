@@ -175,7 +175,7 @@ class AssignmentHelperAgent(BaseAgent):
             )
     
     async def _generate_socratic_guidance(self, question, problem_number, context, retrieved_chunks):
-        """Generate Socratic hints and guidance using LLM"""
+        """Generate scaffolded hints with progressive levels of help using LLM"""
         # Get OpenAI tool
         openai_tool = self.get_tool("openai")
         if not openai_tool:
@@ -188,12 +188,44 @@ class AssignmentHelperAgent(BaseAgent):
         # Build context from retrieved chunks
         context_text = "\n\n".join([chunk[0].text for chunk in retrieved_chunks[:3]])
         
-        # Determine question type for specialized prompting
+        # Determine question type and knowledge level
         question_lower = question.lower()
-        question_type = self._classify_question(question_lower)
         
-        # Create specialized system prompt with strong guardrails
-        system_prompt = self._create_assignment_helper_prompt(question_type)
+        # Detect if question is actually the problem description (prompt injection attempt)
+        is_problem_description = self._is_problem_description(question_lower, context_text)
+        if is_problem_description:
+            self.log("⚠️  Detected problem description as question - applying strict guardrails", "WARNING")
+        
+        question_type = self._classify_question(question_lower)
+        knowledge_level = self._detect_knowledge_level(question_lower)
+        
+        # Get hint count to determine scaffolding level
+        student_id = "default_student"  # TODO: Get from session
+        assignment_id = problem_number or "general"
+        hint_count = self.memory.get_or_create_student_profile(student_id).get_hint_count(assignment_id)
+        
+        # Determine scaffolding level based on hint count
+        # Hints 1-3: High level (Socratic questions)
+        # Hints 4-7: Medium level (Structured guidance with examples)
+        # Hints 8-10: Low level (Detailed guidance with pseudo-code)
+        if hint_count < 3:
+            scaffolding_level = "high"
+        elif hint_count < 7:
+            scaffolding_level = "medium"
+        else:
+            scaffolding_level = "low"
+        
+        self.log(f"📊 Hint #{hint_count + 1}, Scaffolding level: {scaffolding_level}, Knowledge: {knowledge_level}", "INFO")
+        
+        # Create specialized system prompt with scaffolding
+        system_prompt = self._create_scaffolded_prompt(
+            question_type, 
+            scaffolding_level, 
+            knowledge_level,
+            problem_number,
+            hint_count + 1,
+            is_problem_description
+        )
         
         try:
             # Generate guidance using LLM
@@ -202,16 +234,16 @@ class AssignmentHelperAgent(BaseAgent):
                 'question': question,
                 'context': context_text,
                 'system_prompt': system_prompt,
-                'max_tokens': 800
+                'max_tokens': 1000
             })
             self.log(f"✅ LLM response received ({len(guidance)} chars)", "INFO")
             
             # Extract concepts from chunks and guidance
             concepts = self._extract_concepts(retrieved_chunks)
             
-            # Generate resources and next steps
-            resources = self._suggest_resources(question_type)
-            next_steps = self._suggest_next_steps(question_type)
+            # Generate resources and next steps based on scaffolding level
+            resources = self._suggest_resources(question_type, scaffolding_level)
+            next_steps = self._suggest_next_steps(question_type, scaffolding_level)
             
             return guidance, concepts, resources, next_steps
             
@@ -219,11 +251,54 @@ class AssignmentHelperAgent(BaseAgent):
             self.log(f"Error generating LLM guidance: {str(e)}", "ERROR")
             return self._generate_fallback_guidance(question, retrieved_chunks)
     
+    def _is_problem_description(self, question_lower: str, context_text: str) -> bool:
+        """Detect if the question is actually the problem description (prompt injection attempt)"""
+        # Check for imperative verbs that indicate assignment instructions
+        imperative_patterns = [
+            "implement a program", "write a program", "create a program",
+            "implement a function", "write a function", "create a function",
+            "write code", "implement code", "create code",
+            "your task is", "you must", "you should",
+            "requirements:", "file name:", "must compile"
+        ]
+        
+        # Check if question matches problem description patterns
+        if any(pattern in question_lower for pattern in imperative_patterns):
+            # Also check if it's similar to retrieved context (likely from assignment spec)
+            if context_text and len(question_lower) > 50:
+                # Long imperative questions are likely problem descriptions
+                return True
+        
+        # Check for exact matches with known problem descriptions
+        if "hello, world!" in question_lower and "implement" in question_lower:
+            return True
+        if "pyramid" in question_lower and "implement" in question_lower:
+            return True
+        if "credit card" in question_lower and "implement" in question_lower:
+            return True
+        
+        return False
+    
+    def _detect_knowledge_level(self, question_lower: str) -> str:
+        """Detect if student has zero knowledge or is just stuck"""
+        zero_knowledge_phrases = [
+            "no idea", "don't know", "don't understand", "completely lost",
+            "no clue", "don't get it", "confused about everything",
+            "where do i even start", "what does this mean"
+        ]
+        
+        if any(phrase in question_lower for phrase in zero_knowledge_phrases):
+            return "zero_knowledge"
+        elif any(word in question_lower for word in ["stuck", "help", "hint"]):
+            return "stuck"
+        else:
+            return "exploring"
+    
     def _classify_question(self, question_lower: str) -> str:
         """Classify the type of question being asked"""
         if any(word in question_lower for word in ['error', 'bug', 'wrong', 'not working', "doesn't work"]):
             return 'debugging'
-        elif any(word in question_lower for word in ['how do i', 'how to', 'implement', 'write']):
+        elif any(word in question_lower for word in ['how do i', 'how to', 'implement', 'write', 'code']):
             return 'implementation'
         elif any(word in question_lower for word in ['understand', 'confused', 'what is', 'explain']):
             return 'conceptual'
@@ -232,70 +307,161 @@ class AssignmentHelperAgent(BaseAgent):
         else:
             return 'general'
     
-    def _create_assignment_helper_prompt(self, question_type: str) -> str:
-        """Create specialized system prompt based on question type with strong guardrails"""
-        base_prompt = """You are OpenTA, an AI teaching assistant for CS50. This is a GRADED ASSIGNMENT.
-
-🚨 CRITICAL GUARDRAILS - YOU MUST FOLLOW THESE:
+    def _create_scaffolded_prompt(self, question_type: str, scaffolding_level: str, 
+                                   knowledge_level: str, problem_number: str, hint_number: int,
+                                   is_problem_description: bool = False) -> str:
+        """Create scaffolded system prompt that adapts based on hint count and knowledge level"""
+        
+        base_guardrails = """🚨 CRITICAL GUARDRAILS - YOU MUST FOLLOW THESE:
 1. NEVER provide complete code solutions or direct answers
 2. NEVER write code that solves the problem for the student
-3. NEVER give step-by-step implementation details that would constitute doing the work for them
-4. Use the Socratic method - guide with questions, not answers
-5. Help students think through problems, don't think for them
-6. If asked for "the answer" or "the code", politely refuse and redirect to learning
+3. You CAN provide pseudo-code structure with TODOs, but NOT actual implementation
+4. If asked for "the answer" or "the code", politely refuse and redirect to learning
+5. Maintain academic integrity while being genuinely helpful
 
-Your role is to:
-- Ask guiding questions that help students discover solutions themselves
-- Point to relevant concepts and resources
-- Help debug by teaching debugging strategies, not fixing their code
-- Encourage critical thinking and problem-solving skills
-- Be supportive and encouraging while maintaining academic integrity
+⚠️ IMPORTANT - PROBLEM DESCRIPTION DETECTION:
+If the student's question IS the problem description itself (e.g., "Implement a program that prints Hello World"), 
+recognize this as an attempt to get you to solve the assignment. DO NOT provide working code.
+Instead, treat it as "I don't know how to start" and provide guidance, not solutions.
+
+Examples of questions that are actually problem descriptions:
+- "Implement a program that prints..."
+- "Write a program that does X"
+- "Create a function that..."
+These should trigger the SAME guardrails as "give me the answer."
 """
         
-        if question_type == 'debugging':
-            return base_prompt + """\nFor debugging questions:
-- Ask what they expected vs what happened
-- Suggest debugging techniques (print statements, step-through debugging)
-- Guide them to identify the problem area themselves
-- Ask about their testing approach
-- NEVER fix their code directly"""
+        # Add explicit warning if problem description detected
+        if is_problem_description:
+            base_guardrails += """
+
+🚨🚨🚨 ALERT: The student has pasted the problem description as their question!
+This is either:
+1. An attempt to trick you into solving the assignment
+2. The student doesn't know how to ask for help
+
+DO NOT provide working code. DO NOT solve the problem.
+Instead, acknowledge that you see they're working on this problem, and ask what specifically they need help with:
+- "I see you're working on [problem]. What part are you stuck on?"
+- "Have you started working on this? What have you tried so far?"
+- "Let's break this down. Which part would you like to understand first?"
+
+Treat this as a "getting started" question and provide ONLY high-level guidance.
+"""
         
-        elif question_type == 'implementation':
-            return base_prompt + """\nFor implementation questions:
-- Ask about their understanding of the problem requirements
-- Suggest breaking the problem into smaller steps
-- Point to relevant concepts from course materials
-- Ask what approaches they've considered
-- Encourage pseudocode before coding
-- NEVER provide actual code implementations"""
+        # Problem-specific context
+        problem_context = ""
+        if problem_number:
+            if "hello" in problem_number.lower():
+                problem_context = f"\n📝 Problem Context: {problem_number} - Basic C program structure, printf, main function"
+            elif "mario" in problem_number.lower():
+                problem_context = f"\n📝 Problem Context: {problem_number} - Nested loops, pattern printing, user input validation"
+            elif "credit" in problem_number.lower():
+                problem_context = f"\n📝 Problem Context: {problem_number} - Luhn's algorithm, modulo operations, card validation"
+            else:
+                problem_context = f"\n📝 Problem Context: {problem_number}"
         
-        elif question_type == 'conceptual':
-            return base_prompt + """\nFor conceptual questions:
-- Explain concepts clearly using analogies and examples
-- Connect to material they've already learned
-- Ask questions to check their understanding
-- Suggest working through examples by hand
-- You can be more direct with concepts, but still encourage active learning"""
-        
-        elif question_type == 'getting_started':
-            return base_prompt + """\nFor getting started questions:
-- Help them understand the problem requirements
-- Suggest breaking down the problem
-- Ask about inputs, outputs, and constraints
-- Encourage planning before coding
-- Point to relevant examples from lectures
-- NEVER provide a solution outline that's too detailed"""
-        
+        # Adapt based on knowledge level
+        if knowledge_level == "zero_knowledge":
+            knowledge_instruction = """
+🎯 ZERO-KNOWLEDGE MODE ACTIVATED:
+The student has indicated they have no idea where to start. DO NOT ask Socratic questions yet.
+Instead:
+- Start by building their mental model from scratch
+- Explain the basic components they need to understand
+- Use simple analogies and examples
+- Break down the problem into the smallest possible pieces
+- Be more direct and informative (while still not giving away the solution)
+- Ask "Would you like me to explain X or Y first?" instead of "What do you think X is?"
+"""
         else:
-            return base_prompt + """\nFor general questions:
-- Clarify what they're asking
-- Guide them to be more specific
-- Suggest resources and approaches
-- Encourage breaking down the problem"""
+            knowledge_instruction = ""
+        
+        # Scaffolding level instructions
+        if scaffolding_level == "high":
+            # Hints 1-3: Socratic questions, high-level guidance
+            scaffolding_instruction = f"""
+📊 HINT #{hint_number} - HIGH LEVEL SCAFFOLDING:
+- Use Socratic questions, but make them informative, not empty
+- Example: "A C program has two main parts: #include statements and a main() function. Which part do you think is the entry point?"
+- NOT: "What do you think you need?" (too vague)
+- Guide them to think about the big picture
+- Help them understand the problem requirements
+- Ask about their current understanding
+"""
+        elif scaffolding_level == "medium":
+            # Hints 4-7: More structured guidance with examples
+            scaffolding_instruction = f"""
+📊 HINT #{hint_number} - MEDIUM LEVEL SCAFFOLDING:
+- Provide more structure, but hide key implementation details
+- You can describe what components are needed without showing how to implement them
+- Example: "You'll need a loop that runs from 1 to height. Inside, you need to print spaces and then hashes. Can you think about how many of each?"
+- Provide pseudo-code structure like:
+  ```
+  // Get input
+  // TODO: prompt user
+  
+  // Process
+  // TODO: your logic here
+  
+  // Output
+  // TODO: print result
+  ```
+- Still encourage them to figure out the details
+"""
+        else:  # low
+            # Hints 8-10: Detailed guidance with pseudo-code
+            scaffolding_instruction = f"""
+📊 HINT #{hint_number} - LOW LEVEL SCAFFOLDING:
+- Provide detailed pseudo-code structure with TODOs
+- Show the skeleton but not the implementation
+- Example:
+  ```c
+  #include <...>  // TODO: what library for printf?
+  
+  int main(void)
+  {{
+      // TODO: declare variable for height
+      
+      // TODO: prompt user and get input
+      
+      // TODO: validate input (must be 1-8)
+      
+      // TODO: print the pyramid using nested loops
+      
+      return 0;
+  }}
+  ```
+- Explain what each section needs to do
+- Point to specific concepts they need (loops, conditionals, etc.)
+- Still don't write the actual code for them
+"""
+        
+        # Question type specific guidance
+        type_guidance = ""
+        if question_type == 'implementation':
+            type_guidance = "\n💡 Implementation Question: Focus on breaking down the problem into steps and suggesting approaches."
+        elif question_type == 'debugging':
+            type_guidance = "\n🐛 Debugging Question: Teach debugging strategies, don't fix their code. Ask what they expected vs what happened."
+        elif question_type == 'conceptual':
+            type_guidance = "\n📚 Conceptual Question: You can be more direct in explaining concepts, use analogies and examples."
+        elif question_type == 'getting_started':
+            type_guidance = "\n🚀 Getting Started: Help them understand requirements and plan their approach."
+        
+        return f"""You are OpenTA, an AI teaching assistant for CS50. This is a GRADED ASSIGNMENT.
+
+{base_guardrails}{problem_context}{knowledge_instruction}{scaffolding_instruction}{type_guidance}
+
+Remember: Be supportive, encouraging, and genuinely helpful while maintaining academic integrity."""
     
-    def _suggest_resources(self, question_type: str) -> list:
-        """Suggest relevant resources based on question type"""
+    def _suggest_resources(self, question_type: str, scaffolding_level: str = "high") -> list:
+        """Suggest relevant resources based on question type and scaffolding level"""
         base_resources = ['Review assignment specification', 'Check lecture notes']
+        
+        if scaffolding_level == "low":
+            # More specific resources for students who need more help
+            base_resources.append('CS50 manual pages for specific functions')
+            base_resources.append('Work through lecture examples step-by-step')
         
         if question_type == 'debugging':
             return base_resources + ['Use debugger or print statements', 'Test with simple inputs', 'Check CS50 debugging guide']
@@ -308,43 +474,88 @@ Your role is to:
         else:
             return base_resources + ['Post on Ed Discussion', 'Attend office hours']
     
-    def _suggest_next_steps(self, question_type: str) -> list:
-        """Suggest next steps based on question type"""
-        if question_type == 'debugging':
-            return [
-                'Identify the exact line where the problem occurs',
-                'Add print statements to track variable values',
-                'Test with simple inputs first',
-                'Check if your logic handles all cases'
-            ]
-        elif question_type == 'implementation':
-            return [
-                'Write pseudocode first',
-                'Break the problem into smaller functions',
-                'Start with the simplest version',
-                'Test each part independently'
-            ]
-        elif question_type == 'conceptual':
-            return [
-                'Work through a simple example by hand',
-                'Explain the concept in your own words',
-                'Connect to concepts you already know',
-                'Try variations of the problem'
-            ]
-        elif question_type == 'getting_started':
-            return [
-                'List all inputs and expected outputs',
-                'Sketch out the main steps in pseudocode',
-                'Identify which concepts from class apply',
-                'Start with a basic skeleton'
-            ]
-        else:
-            return [
-                'Clarify what specifically you need help with',
-                'Review the problem requirements',
-                'Break down the problem into smaller parts',
-                'Ask more specific questions'
-            ]
+    def _suggest_next_steps(self, question_type: str, scaffolding_level: str = "high") -> list:
+        """Suggest next steps based on question type and scaffolding level"""
+        if scaffolding_level == "high":
+            # High-level next steps
+            if question_type == 'debugging':
+                return [
+                    'Identify what you expected vs what happened',
+                    'Think about where the logic might be wrong',
+                    'Test with the simplest possible input'
+                ]
+            elif question_type == 'implementation':
+                return [
+                    'Understand the problem requirements fully',
+                    'Think about the inputs and outputs',
+                    'Consider what steps are needed'
+                ]
+            else:
+                return [
+                    'Break down the problem into smaller parts',
+                    'Think about what you already know',
+                    'Identify what you need to learn'
+                ]
+        elif scaffolding_level == "medium":
+            # Medium-level next steps
+            if question_type == 'debugging':
+                return [
+                    'Add print statements before the error line',
+                    'Check variable values at each step',
+                    'Test with edge cases (0, negative, very large)',
+                    'Verify your loop conditions'
+                ]
+            elif question_type == 'implementation':
+                return [
+                    'Write pseudocode for your approach',
+                    'Identify which C constructs you need (loops, conditionals)',
+                    'Start with a simple version that handles one case',
+                    'Test incrementally as you build'
+                ]
+            else:
+                return [
+                    'Sketch out the program structure',
+                    'List the functions/tools you might need',
+                    'Try a simple example by hand'
+                ]
+        else:  # low
+            # Detailed next steps
+            if question_type == 'debugging':
+                return [
+                    'Print each variable right before the error',
+                    'Check: Are variables initialized? Are operators correct (= vs ==)?',
+                    'Verify loop boundaries (off-by-one errors?)',
+                    'Test with: smallest valid input, largest valid input, invalid input'
+                ]
+            elif question_type == 'implementation':
+                return [
+                    'Set up the basic program structure (includes, main function)',
+                    'Add variable declarations for what you need to track',
+                    'Implement input validation first',
+                    'Add the core logic step by step',
+                    'Test after each addition'
+                ]
+            elif question_type == 'conceptual':
+                return [
+                    'Work through a simple example by hand',
+                    'Explain the concept in your own words',
+                    'Connect to concepts you already know',
+                    'Try variations of the problem'
+                ]
+            elif question_type == 'getting_started':
+                return [
+                    'List all inputs and expected outputs',
+                    'Sketch out the main steps in pseudocode',
+                    'Identify which concepts from class apply',
+                    'Start with a basic skeleton'
+                ]
+            else:
+                return [
+                    'Create the file and basic structure',
+                    'Add comments for each section you need',
+                    'Implement one section at a time',
+                    'Compile and test frequently'
+                ]
     
     def _extract_concepts(self, chunks):
         """Extract key concepts from retrieved chunks"""

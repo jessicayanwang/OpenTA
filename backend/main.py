@@ -98,7 +98,7 @@ async def startup_event():
     print("📚 Loading course documents...")
     for file_path in data_dir.glob("*.txt"):
         print(f"  - Loading {file_path.name}")
-        with open(file_path, 'r') as f:
+        with open(file_path, 'r', encoding="utf-8") as f:
             content = f.read()
             document_store.ingest_document(content, file_path.name)
     

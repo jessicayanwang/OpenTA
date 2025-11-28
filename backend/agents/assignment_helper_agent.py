@@ -35,6 +35,7 @@ class AssignmentHelperAgent(BaseAgent):
             course_id = content.get('course_id', 'cs50')
             context = content.get('context', '')
             conversation_id = content.get('conversation_id', str(uuid.uuid4()))
+            chat_history = content.get('chat_history', [])  # Get chat history from frontend
             
             self.log(f"Processing assignment help: {question}")
             
@@ -102,7 +103,7 @@ class AssignmentHelperAgent(BaseAgent):
                 citations = []
             else:
                 guidance, concepts, resources, next_steps = await self._generate_socratic_guidance(
-                    question, problem_number, context, retrieved_chunks
+                    question, problem_number, context, retrieved_chunks, chat_history
                 )
                 
                 # Use citation tool
@@ -174,7 +175,7 @@ class AssignmentHelperAgent(BaseAgent):
                 confidence=0.0
             )
     
-    async def _generate_socratic_guidance(self, question, problem_number, context, retrieved_chunks):
+    async def _generate_socratic_guidance(self, question, problem_number, context, retrieved_chunks, chat_history=None):
         """Generate scaffolded hints with progressive levels of help using LLM"""
         # Get OpenAI tool
         openai_tool = self.get_tool("openai")
@@ -204,18 +205,11 @@ class AssignmentHelperAgent(BaseAgent):
         assignment_id = problem_number or "general"
         hint_count = self.memory.get_or_create_student_profile(student_id).get_hint_count(assignment_id)
         
-        # Determine scaffolding level based on hint count
-        # Hints 1-3: High level (Socratic questions)
-        # Hints 4-7: Medium level (Structured guidance with examples)
-        # Hints 8-10: Low level (Detailed guidance with pseudo-code)
-        if hint_count < 3:
-            scaffolding_level = "high"
-        elif hint_count < 7:
-            scaffolding_level = "medium"
-        else:
-            scaffolding_level = "low"
+        # Adaptive scaffolding - respond to student's actual needs, not rigid hint count
+        # Let the LLM decide the appropriate level based on the question
+        scaffolding_level = "adaptive"  # No longer force levels by hint count
         
-        self.log(f"📊 Hint #{hint_count + 1}, Scaffolding level: {scaffolding_level}, Knowledge: {knowledge_level}", "INFO")
+        self.log(f"📊 Hint #{hint_count + 1}/15, Knowledge: {knowledge_level}", "INFO")
         
         # Create specialized system prompt with scaffolding
         system_prompt = self._create_scaffolded_prompt(
@@ -228,11 +222,28 @@ class AssignmentHelperAgent(BaseAgent):
         )
         
         try:
+            # Format chat history for context
+            history_context = ""
+            if chat_history and len(chat_history) > 0:
+                history_context = "\n\n**Previous Conversation:**\n"
+                # Include last 10 messages (5 exchanges) to avoid token limits
+                recent_history = chat_history[-10:] if len(chat_history) > 10 else chat_history
+                for msg in recent_history:
+                    role = msg.get('role', '')
+                    content = msg.get('content', '')
+                    if role == 'user':
+                        history_context += f"Student: {content}\n"
+                    elif role == 'assistant' and msg.get('response', {}).get('guidance'):
+                        # Extract just the guidance text, not the full response object
+                        guidance_text = msg['response']['guidance'][:200]  # Truncate long responses
+                        history_context += f"Assistant: {guidance_text}...\n"
+                history_context += "\n**Current Question:**\n"
+            
             # Generate guidance using LLM
-            self.log(f"🤖 Calling OpenAI API for question type: {question_type}", "INFO")
+            self.log(f"🤖 Calling OpenAI API for question type: {question_type}, with {len(chat_history) if chat_history else 0} history messages", "INFO")
             guidance = await openai_tool.execute({
                 'question': question,
-                'context': context_text,
+                'context': context_text + history_context,  # Add chat history to context
                 'system_prompt': system_prompt,
                 'max_tokens': 1000
             })
@@ -335,7 +346,7 @@ These should trigger the SAME guardrails as "give me the answer."
         if is_problem_description:
             base_guardrails += """
 
-🚨🚨🚨 ALERT: The student has pasted the problem description as their question!
+🚨🚨🚨 ALERT: The student might have pasted the problem description as their question!
 This is either:
 1. An attempt to trick you into solving the assignment
 2. The student doesn't know how to ask for help
@@ -377,64 +388,51 @@ Instead:
         else:
             knowledge_instruction = ""
         
-        # Scaffolding level instructions
-        if scaffolding_level == "high":
-            # Hints 1-3: Socratic questions, high-level guidance
-            scaffolding_instruction = f"""
-📊 HINT #{hint_number} - HIGH LEVEL SCAFFOLDING:
-- Use Socratic questions, but make them informative, not empty
-- Example: "A C program has two main parts: #include statements and a main() function. Which part do you think is the entry point?"
-- NOT: "What do you think you need?" (too vague)
-- Guide them to think about the big picture
-- Help them understand the problem requirements
-- Ask about their current understanding
-"""
-        elif scaffolding_level == "medium":
-            # Hints 4-7: More structured guidance with examples
-            scaffolding_instruction = f"""
-📊 HINT #{hint_number} - MEDIUM LEVEL SCAFFOLDING:
-- Provide more structure, but hide key implementation details
-- You can describe what components are needed without showing how to implement them
-- Example: "You'll need a loop that runs from 1 to height. Inside, you need to print spaces and then hashes. Can you think about how many of each?"
-- Provide pseudo-code structure like:
-  ```
-  // Get input
-  // TODO: prompt user
-  
-  // Process
-  // TODO: your logic here
-  
-  // Output
-  // TODO: print result
-  ```
-- Still encourage them to figure out the details
-"""
-        else:  # low
-            # Hints 8-10: Detailed guidance with pseudo-code
-            scaffolding_instruction = f"""
-📊 HINT #{hint_number} - LOW LEVEL SCAFFOLDING:
-- Provide detailed pseudo-code structure with TODOs
-- Show the skeleton but not the implementation
-- Example:
-  ```c
-  #include <...>  // TODO: what library for printf?
-  
-  int main(void)
-  {{
-      // TODO: declare variable for height
-      
-      // TODO: prompt user and get input
-      
-      // TODO: validate input (must be 1-8)
-      
-      // TODO: print the pyramid using nested loops
-      
-      return 0;
-  }}
-  ```
-- Explain what each section needs to do
-- Point to specific concepts they need (loops, conditionals, etc.)
-- Still don't write the actual code for them
+        # Adaptive scaffolding instructions - respond to student's actual needs
+        scaffolding_instruction = f"""
+📊 HINT #{hint_number}/15 - ADAPTIVE GUIDANCE:
+
+**Core Principle**: Be informative and helpful while guiding students to think. Adapt your response to what the student actually needs, not a rigid hint number.
+
+**Response Style**:
+- If they're debugging: Help them think through the problem, don't fix their code
+- If they're stuck: Provide conceptual guidance to get them unstuck
+- If they have specific questions: Answer directly but guide them to understand
+- If they're exploring: Use Socratic questions that are informative, not empty
+
+**When Providing Algorithmic Guidance** (if needed):
+Use PURELY CONCEPTUAL, NATURAL LANGUAGE descriptions. NO code-like syntax.
+
+✅ GOOD - Conceptual thinking:
+"Think about repeating a process for each row. For the first row, you need one hash. For the second row, two hashes. Can you see the pattern?"
+
+"You'll want to repeat an action multiple times. Each time through, you do something slightly different based on which repetition you're on."
+
+"Consider: what changes from one row to the next? The number of spaces decreases while the number of symbols increases."
+
+**Pseudo-Code Rules** (when absolutely necessary):
+- No code that could pass as partial or full solution
+- NO compilable structures
+- No #include
+- No valid main() signature
+- No braces that form valid syntax
+- No valid printf
+- No compilable loops 
+- No function declarations
+- Focus on WHAT to do, not HOW to write it
+- Use phrases like: "repeat this step", "check if", "for each item", "keep doing until"
+
+**Example of Good Conceptual Guidance**:
+"Here's the thinking process:
+- First, get a number from the user and make sure it's valid
+- Then, think about each row as having two parts: empty space and symbols
+- The empty space gets smaller as you go down
+- The symbols get more numerous as you go down
+- After each row, move to a new line
+
+Can you think about how the row number relates to how many spaces and symbols you need?"
+
+**Remember**: You're teaching them to THINK algorithmically, not giving them code to copy.
 """
         
         # Question type specific guidance

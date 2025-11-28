@@ -248,45 +248,58 @@ const HINT_SUGGESTIONS = [
 
 export default function AssignmentHelpPage() {
   const router = useRouter()
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: 'system',
-      content: `Welcome to the Assignment Helper!
-
-I'm here to guide you through your assignments using the Socratic method. I won't give you direct answers, but I'll help you:
-
-• Break down problems into manageable steps
-• Debug your code systematically  
-• Understand key concepts
-• Think through algorithms logically
-
-You can:
-- Ask questions about the assignment
-- Share code snippets for review (click "Add code/context" button)
-- Describe errors you're encountering
-- Request help with algorithms or concepts
-
-Let's work through this together!
-
-Quick tip: Select your problem from the dropdown above, then start asking questions!`,
-      suggestedQuestions: ['How do I start?', 'My code has an error', 'What algorithm should I use?', 'Can you review my code?']
-    }
-  ])
+  
+  // Multi-chat system: Store separate chat sessions for each problem
+  const [chatSessions, setChatSessions] = useState<{ [problemId: string]: Message[] }>({})
+  const [selectedProblem, setSelectedProblem] = useState('')
   const [input, setInput] = useState('')
   const [contextInput, setContextInput] = useState('')
-  const [selectedProblem, setSelectedProblem] = useState('')
   const [showContextBox, setShowContextBox] = useState(false)
   const [loading, setLoading] = useState(false)
   const [useMockData, setUseMockData] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  
+  // Get welcome message for a problem
+  const getWelcomeMessage = (problemName: string): Message => ({
+    role: 'system',
+    content: `Welcome to the Assignment Helper for ${problemName}!
 
+I'm here to guide you through this problem. I won't give you direct answers, but I'll help you:
+
+• Break down the problem into manageable steps
+• Debug your code systematically  
+• Understand key concepts
+• Think through algorithms logically
+
+You have up to 15 hints for this problem. Let's work through it together!
+
+What would you like help with?`,
+    suggestedQuestions: ['How do I start?', 'My code has an error', 'What algorithm should I use?', 'Can you review my code?']
+  })
+  
+  // Get current messages for selected problem
+  const messages = selectedProblem && chatSessions[selectedProblem] 
+    ? chatSessions[selectedProblem] 
+    : []
+
+  // Initialize chat session when problem is selected
+  useEffect(() => {
+    if (selectedProblem && !chatSessions[selectedProblem]) {
+      const problemName = PROBLEMS.find(p => p.id === selectedProblem)?.name || 'this problem'
+      setChatSessions(prev => ({
+        ...prev,
+        [selectedProblem]: [getWelcomeMessage(problemName)]
+      }))
+    }
+  }, [selectedProblem])
+  
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
   const sendMessage = async () => {
-    if (!input.trim()) return
+    if (!input.trim() || !selectedProblem) return
 
     const userMessage: Message = {
       role: 'user',
@@ -295,7 +308,11 @@ Quick tip: Select your problem from the dropdown above, then start asking questi
       problemNumber: PROBLEMS.find(p => p.id === selectedProblem)?.name
     }
 
-    setMessages(prev => [...prev, userMessage])
+    // Add message to current problem's chat session
+    setChatSessions(prev => ({
+      ...prev,
+      [selectedProblem]: [...(prev[selectedProblem] || []), userMessage]
+    }))
     setInput('')
     setContextInput('')
     setShowContextBox(false)
@@ -323,7 +340,10 @@ Quick tip: Select your problem from the dropdown above, then start asking questi
           response: MOCK_RESPONSES[mockType]
         }
         
-        setMessages(prev => [...prev, assistantMessage])
+        setChatSessions(prev => ({
+          ...prev,
+          [selectedProblem]: [...(prev[selectedProblem] || []), assistantMessage]
+        }))
       } else {
         // Real API call
         const res = await fetch('http://localhost:8000/api/assignment-help', {
@@ -333,7 +353,8 @@ Quick tip: Select your problem from the dropdown above, then start asking questi
             question: input,
             problem_number: PROBLEMS.find(p => p.id === selectedProblem)?.name,
             context: contextInput || undefined,
-            course_id: 'cs50'
+            course_id: 'cs50',
+            chat_history: chatSessions[selectedProblem] || []  // Send chat history for this problem
           }),
         })
         
@@ -346,7 +367,10 @@ Quick tip: Select your problem from the dropdown above, then start asking questi
           response: data
         }
         
-        setMessages(prev => [...prev, assistantMessage])
+        setChatSessions(prev => ({
+          ...prev,
+          [selectedProblem]: [...(prev[selectedProblem] || []), assistantMessage]
+        }))
       }
     } catch (error) {
       console.error('Error:', error)
@@ -354,7 +378,10 @@ Quick tip: Select your problem from the dropdown above, then start asking questi
         role: 'assistant',
         content: 'Sorry, I encountered an error. Please make sure the backend is running and try again.',
       }
-      setMessages(prev => [...prev, errorMessage])
+      setChatSessions(prev => ({
+        ...prev,
+        [selectedProblem]: [...(prev[selectedProblem] || []), errorMessage]
+      }))
     } finally {
       setLoading(false)
     }
@@ -459,10 +486,15 @@ Quick tip: Select your problem from the dropdown above, then start asking questi
                     <option value="">Select problem...</option>
                     {PROBLEMS.map(problem => (
                       <option key={problem.id} value={problem.id}>
-                        {problem.name}
+                        {problem.name}{chatSessions[problem.id] ? ' 💬' : ''}
                       </option>
                     ))}
                   </select>
+                  {selectedProblem && chatSessions[selectedProblem] && (
+                    <span className="text-xs text-gray-600 ml-2">
+                      {chatSessions[selectedProblem].filter(m => m.role === 'user').length}/15 hints
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -502,7 +534,25 @@ Quick tip: Select your problem from the dropdown above, then start asking questi
         {/* Chat Container */}
         <div className="flex-1 overflow-y-auto bg-[#f7f7f5] py-4">
           <div className="max-w-4xl mx-auto px-8 space-y-3">
-            {messages.map((message, index) => (
+            {!selectedProblem ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center max-w-md">
+                  <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <FileText size={32} className="text-orange-500" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Select a Problem to Start</h3>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Choose a problem from the dropdown above to begin getting help. Each problem has its own chat with up to 15 hints.
+                  </p>
+                  {Object.keys(chatSessions).length > 0 && (
+                    <div className="text-xs text-gray-500">
+                      Active chats: {Object.keys(chatSessions).map(id => PROBLEMS.find(p => p.id === id)?.name).join(', ')}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              messages.map((message, index) => (
               <div key={index}>
                 {/* User Message */}
                 {message.role === 'user' && (
@@ -644,9 +694,10 @@ Quick tip: Select your problem from the dropdown above, then start asking questi
                   </div>
                 )}
               </div>
-            ))}
+            ))
+            )}
             
-            {loading && (
+            {loading && selectedProblem && (
               <div className="flex gap-3 mb-4">
                 <div className="w-8 h-8 bg-gradient-to-br from-orange-400 to-orange-600 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm">
                   <span className="text-white text-sm">🤖</span>

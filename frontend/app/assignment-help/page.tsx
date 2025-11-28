@@ -222,9 +222,21 @@ Share your code in your next message, and let's walk through it together! 📝`,
 }
 
 const PROBLEMS = [
-  { id: 'problem1', name: 'Problem 1: Hello' },
-  { id: 'problem2', name: 'Problem 2: Mario' },
-  { id: 'problem3', name: 'Problem 3: Credit' },
+  { 
+    id: 'problem1', 
+    name: 'Problem 1: Hello',
+    description: 'Implement a program that prints "Hello, World!" to the screen. Requirements: File name: hello.c, Must compile without errors, Output must match exactly: "Hello, World!\\n"'
+  },
+  { 
+    id: 'problem2', 
+    name: 'Problem 2: Mario',
+    description: 'Implement a program that prints a half-pyramid of a specified height using hashes (#). Requirements: Prompt user for height (between 1 and 8, inclusive), If invalid input, re-prompt, Print right-aligned pyramid.'
+  },
+  { 
+    id: 'problem3', 
+    name: 'Problem 3: Credit',
+    description: 'Implement a program that determines whether a credit card number is valid using Luhn\'s algorithm. Requirements: Prompt user for credit card number, Validate using Luhn\'s algorithm, Identify card type: AMEX, MASTERCARD, VISA, or INVALID.'
+  },
 ]
 
 const HINT_SUGGESTIONS = [
@@ -265,7 +277,7 @@ Quick tip: Select your problem from the dropdown above, then start asking questi
   const [selectedProblem, setSelectedProblem] = useState('')
   const [showContextBox, setShowContextBox] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [useMockData, setUseMockData] = useState(true)
+  const [useMockData, setUseMockData] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // Auto-scroll to bottom when new messages arrive
@@ -434,22 +446,24 @@ Quick tip: Select your problem from the dropdown above, then start asking questi
       <div className="flex-1 flex flex-col">
         <div className="px-8 py-2 bg-[#f7f7f5]">
           <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-4 flex-1">
-              <h1 className="text-xl font-normal text-gray-900 whitespace-nowrap">Assignment Helper</h1>
-              <div className="flex items-center gap-2 flex-1">
-                <label className="text-xs text-gray-600 whitespace-nowrap">Problem:</label>
-                <select
-                  value={selectedProblem}
-                  onChange={(e) => setSelectedProblem(e.target.value)}
-                  className="flex-1 max-w-xs border border-gray-300 rounded-lg px-3 py-1.5 text-sm"
-                >
-                  <option value="">Select problem...</option>
-                  {PROBLEMS.map(problem => (
-                    <option key={problem.id} value={problem.id}>
-                      {problem.name}
-                    </option>
-                  ))}
-                </select>
+            <div className="flex items-center justify-between gap-4 flex-1">
+              <div className="flex items-center gap-4 flex-1">
+                <h1 className="text-xl font-normal text-gray-900 whitespace-nowrap">Assignment Helper</h1>
+                <div className="flex items-center gap-2 flex-1">
+                  <label className="text-xs text-gray-600 whitespace-nowrap">Problem:</label>
+                  <select
+                    value={selectedProblem}
+                    onChange={(e) => setSelectedProblem(e.target.value)}
+                    className="flex-1 max-w-xs border border-gray-300 rounded-lg px-3 py-1.5 text-sm"
+                  >
+                    <option value="">Select problem...</option>
+                    {PROBLEMS.map(problem => (
+                      <option key={problem.id} value={problem.id}>
+                        {problem.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
             <label className="flex items-center gap-2 cursor-pointer text-xs">
@@ -463,6 +477,27 @@ Quick tip: Select your problem from the dropdown above, then start asking questi
             </label>
           </div>
         </div>
+
+        {/* Problem Description Banner */}
+        {selectedProblem && (
+          <div className="bg-gradient-to-r from-orange-50 to-orange-100 border-b border-orange-200 px-8 py-3">
+            <div className="max-w-4xl mx-auto">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <FileText size={16} className="text-white" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-orange-900 mb-1">
+                    {PROBLEMS.find(p => p.id === selectedProblem)?.name}
+                  </h3>
+                  <p className="text-xs text-orange-800 leading-relaxed">
+                    {PROBLEMS.find(p => p.id === selectedProblem)?.description}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Chat Container */}
         <div className="flex-1 overflow-y-auto bg-[#f7f7f5] py-4">

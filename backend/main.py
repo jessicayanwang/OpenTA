@@ -151,6 +151,8 @@ async def startup_event():
     assignment_helper.register_tool(citation_tool)
     assignment_helper.register_tool(analytics_tool)
     assignment_helper.register_tool(guardrail_tool)
+    if openai_tool:
+        assignment_helper.register_tool(openai_tool)
     orchestrator.register_agent(assignment_helper)
     
     study_plan_agent = StudyPlanAgent()
@@ -400,6 +402,36 @@ async def assignment_help(request: AssignmentHelpRequest, student_id: str = "stu
     print(f"✅ Guidance generated with {len(help_response.concepts)} key concepts")
     
     return help_response
+
+@app.get("/api/assignment-problems")
+async def get_assignment_problems(course_id: str = "cs50"):
+    """Get list of assignment problems"""
+    # Parse assignment file to extract problems
+    data_dir = Path(__file__).parent / "data"
+    assignment_file = data_dir / "cs50_assignment1.txt"
+    
+    problems = []
+    if assignment_file.exists():
+        with open(assignment_file, 'r', encoding='utf-8') as f:
+            content = f.read()
+            
+            # Extract problems using simple parsing
+            import re
+            problem_pattern = r'## (PROBLEM \d+: [^\n]+)\n(.*?)(?=\n## |\Z)'
+            matches = re.findall(problem_pattern, content, re.DOTALL)
+            
+            for i, (title, description) in enumerate(matches, 1):
+                # Clean up description
+                desc_lines = [line.strip() for line in description.split('\n') if line.strip()]
+                clean_desc = ' '.join(desc_lines[:5])  # First 5 lines
+                
+                problems.append({
+                    'id': f'problem{i}',
+                    'name': title.title(),
+                    'description': clean_desc[:300] + '...' if len(clean_desc) > 300 else clean_desc
+                })
+    
+    return {"problems": problems}
 
 # ========== PROFESSOR CONSOLE ENDPOINTS ==========
 

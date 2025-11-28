@@ -180,7 +180,7 @@ class ConfusionHeatmapEntry(BaseModel):
 # Guardrail Settings models
 class GuardrailSettings(BaseModel):
     course_id: str
-    max_hints: int = 3  # 1, 3, or 5
+    max_hints: int = 15  # Progressive scaffolding: 15 hints per problem with increasing detail
     show_thinking_path: bool = True
     graded_banner_text: str = "⚠️ This is a graded assignment. I'll provide hints to guide your learning, not direct answers."
     assignment_rubrics: Dict[str, List[str]] = {}  # assignment_id -> checklist items

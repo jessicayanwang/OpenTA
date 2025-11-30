@@ -365,78 +365,78 @@ export default function Home() {
 
       {/* Welcome Tour Modal */}
       {showTour && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-6">
-          <div className="bg-white rounded-2xl max-w-2xl w-full p-8 shadow-2xl">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 bg-gradient-to-br from-accent-500 to-accent-700 rounded-xl flex items-center justify-center">
-                <Sparkles size={24} className="text-white" />
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full max-h-[85vh] overflow-y-auto p-6 shadow-2xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-gradient-to-br from-accent-500 to-accent-700 rounded-xl flex items-center justify-center flex-shrink-0">
+                <Sparkles size={20} className="text-white" />
               </div>
-              <h2 className="text-3xl font-serif font-semibold text-[#1F1D20]">Welcome to OpenTA!</h2>
+              <h2 className="text-2xl font-serif font-semibold text-[#1F1D20]">Welcome to OpenTA!</h2>
             </div>
             
-            <p className="text-[#6F6B65] text-lg mb-8 leading-relaxed">
-              Your AI teaching assistant is ready to help you succeed. Here's what you can do:
+            <p className="text-[#6F6B65] text-sm mb-4">
+              Your AI teaching assistant is ready to help you succeed.
             </p>
 
-            <div className="space-y-6 mb-8">
-              <div className="flex gap-4">
-                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <MessageCircle size={20} className="text-blue-600" />
+            <div className="space-y-3 mb-4">
+              <div className="flex gap-3">
+                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <MessageCircle size={16} className="text-blue-600" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-[#1F1D20] mb-1">Ask Questions</h3>
-                  <p className="text-sm text-[#6F6B65]">
-                    Get instant answers about course logistics, deadlines, policies, and content — all backed by citations from your course materials.
+                  <h3 className="font-semibold text-[#1F1D20] text-sm">Ask Questions</h3>
+                  <p className="text-xs text-[#6F6B65]">
+                    Get instant answers about course logistics, deadlines, and content with citations.
                   </p>
                 </div>
               </div>
 
-              <div className="flex gap-4">
-                <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <BookOpen size={20} className="text-green-600" />
+              <div className="flex gap-3">
+                <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <BookOpen size={16} className="text-green-600" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-[#1F1D20] mb-1">Self-study Room</h3>
-                  <p className="text-sm text-[#6F6B65]">
-                    Navigate to Self-study Room in the sidebar for adaptive daily quizzes based on your learning patterns and spaced repetition.
+                  <h3 className="font-semibold text-[#1F1D20] text-sm">Self-study Room</h3>
+                  <p className="text-xs text-[#6F6B65]">
+                    Adaptive daily quizzes based on your learning patterns and spaced repetition.
                   </p>
                 </div>
               </div>
 
-              <div className="flex gap-4">
-                <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <FileText size={20} className="text-purple-600" />
+              <div className="flex gap-3">
+                <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <FileText size={16} className="text-purple-600" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-[#1F1D20] mb-1">Get Assignment Help</h3>
-                  <p className="text-sm text-[#6F6B65]">
-                    Stuck on a problem? Visit Assignment Help for Socratic guidance that helps you learn without giving away answers.
+                  <h3 className="font-semibold text-[#1F1D20] text-sm">Get Assignment Help</h3>
+                  <p className="text-xs text-[#6F6B65]">
+                    Socratic guidance that helps you learn without giving away answers.
                   </p>
                 </div>
               </div>
 
-              <div className="flex gap-4">
-                <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <HelpCircle size={20} className="text-orange-600" />
+              <div className="flex gap-3">
+                <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <HelpCircle size={16} className="text-orange-600" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-[#1F1D20] mb-1">Check the FAQ</h3>
-                  <p className="text-sm text-[#6F6B65]">
-                    Browse professor-verified answers to common questions for quick reference.
+                  <h3 className="font-semibold text-[#1F1D20] text-sm">Check the FAQ</h3>
+                  <p className="text-xs text-[#6F6B65]">
+                    Browse professor-verified answers to common questions.
                   </p>
                 </div>
               </div>
             </div>
 
-            <div className="bg-accent-50 border border-accent-200 rounded-xl p-4 mb-6">
-              <p className="text-sm text-accent-800">
-                <strong>💡 Pro Tip:</strong> All answers include citations showing exactly where the information comes from. Click on citation badges to see sources!
+            <div className="bg-accent-50 border border-accent-200 rounded-lg p-3 mb-4">
+              <p className="text-xs text-accent-800">
+                <strong>💡 Pro Tip:</strong> Click on citation badges to see sources!
               </p>
             </div>
 
             <button
               onClick={() => setShowTour(false)}
-              className="w-full px-6 py-3 bg-accent-600 hover:bg-accent-700 text-white font-semibold rounded-xl shadow-sm transition-all duration-150"
+              className="w-full px-4 py-2.5 bg-accent-600 hover:bg-accent-700 text-white font-semibold rounded-xl shadow-sm transition-all duration-150 text-sm"
             >
               Got it, let's start!
             </button>

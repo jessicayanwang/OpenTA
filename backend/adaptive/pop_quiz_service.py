@@ -140,9 +140,103 @@ class PopQuizService:
         else:
             return "General CS50"
     
+    def _generate_questions_batch_openai(
+        self, 
+        chunks_with_topics: List[tuple]
+    ) -> List[PopQuizItem]:
+        """
+        BATCHED: Generate multiple quiz questions in a single OpenAI call
+        Takes list of (chunk, topic) tuples and returns all questions at once
+        """
+        if not self.use_openai or not chunks_with_topics:
+            return []
+        
+        try:
+            # Build content sections for each topic
+            content_sections = []
+            for i, (chunk, topic) in enumerate(chunks_with_topics):
+                content_sections.append(f"""
+=== Topic {i+1}: {topic} ===
+Section: {chunk.section}
+Content: {chunk.text[:600]}
+""")
+            
+            all_content = "\n".join(content_sections)
+            num_questions = len(chunks_with_topics)
+            
+            prompt = f"""Generate {num_questions} multiple-choice quiz questions, ONE for each topic section below.
+
+{all_content}
+
+For EACH topic section, generate exactly 1 question that:
+1. Tests understanding of key concepts (not memorization)
+2. Has 4 plausible options (not obvious wrong answers)
+3. Is clear and unambiguous
+4. References the specific topic
+
+Return ONLY a JSON array with {num_questions} objects in this exact format:
+[
+  {{
+    "topic_index": 0,
+    "question": "...",
+    "options": ["...", "...", "...", "..."],
+    "correct_index": 0,
+    "explanation": "..."
+  }},
+  ...
+]"""
+
+            response = self.openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "You are a CS50 teaching assistant creating quiz questions. Return only valid JSON array."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.7,
+                max_tokens=1500  # Increased for batch
+            )
+            
+            content = response.choices[0].message.content.strip()
+            # Remove markdown code blocks if present
+            if content.startswith("```"):
+                content = content.split("```")[1]
+                if content.startswith("json"):
+                    content = content[4:]
+            
+            questions_data = json.loads(content)
+            
+            # Convert to PopQuizItem objects
+            questions = []
+            for q_data in questions_data:
+                topic_idx = q_data.get("topic_index", len(questions))
+                if topic_idx < len(chunks_with_topics):
+                    chunk, topic = chunks_with_topics[topic_idx]
+                else:
+                    # Fallback if index missing
+                    chunk, topic = chunks_with_topics[len(questions) % len(chunks_with_topics)]
+                
+                question_id = f"{chunk.source}_{chunk.section}_batch_{len(questions)}"
+                questions.append(PopQuizItem(
+                    question_id=question_id,
+                    topic=topic,
+                    subtopic=chunk.section,
+                    question=q_data["question"],
+                    options=q_data["options"],
+                    correct_index=q_data["correct_index"],
+                    difficulty=0.6,
+                    source_citation=f"{chunk.source} - {chunk.section}",
+                    explanation=q_data.get("explanation", "Refer to course materials")
+                ))
+            
+            return questions
+            
+        except Exception as e:
+            print(f"  ⚠ Batch OpenAI question generation failed: {str(e)}")
+            return []
+    
     def _generate_questions_with_openai(self, chunk: DocumentChunk, topic: str) -> List[PopQuizItem]:
         """
-        Use OpenAI to generate high-quality quiz questions from content
+        Use OpenAI to generate high-quality quiz questions from content (single chunk)
         """
         if not self.use_openai:
             return []
@@ -338,28 +432,36 @@ Return ONLY a JSON array with this exact format:
         if not subtopics_to_quiz:
             subtopics_to_quiz = ["C Programming Basics", "Algorithms", "Memory Management", "Arrays and Strings", "Data Structures"]
         
-        # STEP 3: Generate questions ON-DEMAND for each subtopic
+        # STEP 3: Collect all chunks first (fast retrieval step)
+        chunks_with_topics = []
         for subtopic_key in subtopics_to_quiz[:num_items]:
             # Parse subtopic key (format: "Topic: Subtopic" or just "Topic")
             if ": " in subtopic_key:
                 topic, specific_subtopic = subtopic_key.split(": ", 1)
-                # Search for the specific subtopic content
                 query = f"{topic} {specific_subtopic} concepts and examples"
             else:
                 topic = subtopic_key
-                # Broad topic search for new students
                 query = f"{topic} concepts and examples"
             
             chunks = self.retriever.retrieve(query, top_k=1)
-            
             if chunks:
                 chunk = chunks[0][0]  # Get top chunk
-                # Generate question on-demand
+                chunks_with_topics.append((chunk, topic))
+        
+        # STEP 4: Generate ALL questions in a single batched OpenAI call
+        if chunks_with_topics and self.use_openai:
+            quiz_items = self._generate_questions_batch_openai(chunks_with_topics)
+            # Cache all questions for later submission
+            for question in quiz_items:
+                self.question_cache[question.question_id] = question
+        
+        # Fallback: If batch failed or OpenAI not available, generate individually
+        if not quiz_items:
+            for chunk, topic in chunks_with_topics:
                 questions = self._generate_questions_from_chunk(chunk, topic)
                 if questions:
                     question = questions[0]
                     quiz_items.append(question)
-                    # Cache for later submission
                     self.question_cache[question.question_id] = question
         
         return quiz_items[:num_items]

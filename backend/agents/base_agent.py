@@ -12,6 +12,7 @@ from protocols.agent_message import AgentMessage, AgentResponse, MessageType
 
 class AgentCapability(str, Enum):
     """Capabilities that agents can have"""
+    # Student-side capabilities
     ANSWER_QUESTIONS = "answer_questions"
     PROVIDE_HINTS = "provide_hints"
     GENERATE_STUDY_PLANS = "generate_study_plans"
@@ -19,6 +20,16 @@ class AgentCapability(str, Enum):
     VALIDATE_CITATIONS = "validate_citations"
     MANAGE_COURSE = "manage_course"
     RETRIEVE_DOCUMENTS = "retrieve_documents"
+    
+    # Professor-side capabilities
+    CLUSTER_QUESTIONS = "cluster_questions"
+    MANAGE_CANONICAL_ANSWERS = "manage_canonical_answers"
+    MANAGE_UNRESOLVED_QUEUE = "manage_unresolved_queue"
+    VIEW_DASHBOARD = "view_dashboard"
+    ANALYZE_STUDENTS = "analyze_students"
+    MANAGE_GUARDRAILS = "manage_guardrails"
+    VIEW_CONFUSION_HEATMAP = "view_confusion_heatmap"
+    IDENTIFY_CONTENT_GAPS = "identify_content_gaps"
 
 class BaseAgent(ABC):
     """

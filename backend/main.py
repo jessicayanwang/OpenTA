@@ -32,6 +32,13 @@ from agents.orchestrator import OrchestratorAgent
 from agents.qa_agent import QAAgent
 from agents.assignment_helper_agent import AssignmentHelperAgent
 from agents.study_plan_agent import StudyPlanAgent
+# Professor-side agents
+from agents.professor_orchestrator import ProfessorOrchestrator
+from agents.clustering_agent import ClusteringAgent
+from agents.canonical_answer_agent import CanonicalAnswerAgent
+from agents.unresolved_queue_agent import UnresolvedQueueAgent
+from agents.dashboard_agent import DashboardAgent
+from agents.guardrail_settings_agent import GuardrailSettingsAgent
 from memory.shared_memory import SharedMemory
 from tools.retrieval_tool import RetrievalTool
 from tools.citation_tool import CitationTool
@@ -73,6 +80,7 @@ professor_service = None  # Will be initialized with embedder in startup
 # Multi-Agent Framework
 shared_memory = SharedMemory()
 orchestrator = None
+professor_orchestrator = None  # Professor-side orchestrator
 study_plan_agent = None
 # diagnostic_service = None
 # learning_flow_service = None
@@ -87,7 +95,7 @@ reminder_service = None
 @app.on_event("startup")
 async def startup_event():
     """Initialize the multi-agent system on startup"""
-    global retriever, orchestrator, professor_service, study_plan_agent
+    global retriever, orchestrator, professor_orchestrator, professor_service, study_plan_agent
     global spaced_rep_engine, pop_quiz_service, behavioral_tracker, exam_runway_service, reminder_service
     
     print("🚀 Starting OpenTA Multi-Agent System...")
@@ -157,6 +165,31 @@ async def startup_event():
     
     study_plan_agent = StudyPlanAgent()
     orchestrator.register_agent(study_plan_agent)
+    
+    # Initialize Professor Orchestrator and Agents
+    print("\n👨‍🏫 Initializing Professor-Side Multi-Agent System...")
+    professor_orchestrator = ProfessorOrchestrator(shared_memory)
+    
+    # Create and register professor agents
+    clustering_agent = ClusteringAgent(professor_service)
+    professor_orchestrator.register_agent(clustering_agent)
+    
+    canonical_answer_agent = CanonicalAnswerAgent(professor_service)
+    professor_orchestrator.register_agent(canonical_answer_agent)
+    
+    unresolved_queue_agent = UnresolvedQueueAgent(professor_service)
+    professor_orchestrator.register_agent(unresolved_queue_agent)
+    
+    dashboard_agent = DashboardAgent(professor_service)
+    professor_orchestrator.register_agent(dashboard_agent)
+    
+    guardrail_settings_agent = GuardrailSettingsAgent(professor_service)
+    professor_orchestrator.register_agent(guardrail_settings_agent)
+    
+    print("✅ Professor Multi-Agent System Ready!")
+    print(f"   Registered professor agents: {len(professor_orchestrator.agents)}")
+    for agent_id, agent in professor_orchestrator.agents.items():
+        print(f"   - {agent.name} ({agent_id})")
     
     # Initialize Adaptive Learning System
     print("\n🧠 Initializing Adaptive Learning System...")
@@ -437,126 +470,33 @@ async def get_assignment_problems(course_id: str = "cs50"):
 
 @app.get("/api/professor/dashboard")
 async def get_dashboard_metrics(course_id: str = "cs50", days: int = 7):
-    """Get dashboard overview metrics"""
-    from datetime import datetime, timedelta
-    from mock_data_generator import MockDataGenerator
+    """Get dashboard overview metrics using agentic architecture"""
+    response = await professor_orchestrator.get_dashboard_metrics(course_id, days)
     
-    cutoff = datetime.now() - timedelta(days=days)
-    recent_questions = [q for q in professor_service.question_logs if q["timestamp"] >= cutoff]
+    if not response.success:
+        raise HTTPException(status_code=500, detail=response.error)
     
-    # Calculate metrics
-    total_questions = len(recent_questions)
-    avg_confidence = sum(q["confidence"] for q in recent_questions) / max(len(recent_questions), 1)
-    
-    # Count struggling students (3+ confusion signals)
-    student_confusion_count = {}
-    for signal in professor_service.confusion_signals:
-        if signal.timestamp >= cutoff:
-            student_id = signal.student_id
-            student_confusion_count[student_id] = student_confusion_count.get(student_id, 0) + 1
-    
-    struggling_students = len([s for s, count in student_confusion_count.items() if count >= 3])
-    
-    # Unresolved count
-    unresolved_count = len([item for item in professor_service.unresolved_queue.values() if not item.resolved])
-    
-    # Top confusion topics
-    topic_confusion = {}
-    for signal in professor_service.confusion_signals:
-        if signal.timestamp >= cutoff:
-            topic = signal.section or signal.artifact
-            topic_confusion[topic] = topic_confusion.get(topic, 0) + 1
-    
-    top_topics = sorted(topic_confusion.items(), key=lambda x: x[1], reverse=True)[:5]
-    
-    # Recent activity (last 10 questions)
-    recent_activity = sorted(recent_questions, key=lambda x: x["timestamp"], reverse=True)[:10]
-    
-    return {
-        "metrics": {
-            "total_questions": total_questions,
-            "avg_confidence": round(avg_confidence, 2),
-            "struggling_students": struggling_students,
-            "unresolved_items": unresolved_count
-        },
-        "top_confusion_topics": [{"topic": topic, "count": count} for topic, count in top_topics],
-        "recent_activity": [
-            {
-                "question": q["question"],
-                "student_id": q["student_id"],
-                "confidence": q["confidence"],
-                "timestamp": q["timestamp"].isoformat(),
-                "artifact": q.get("artifact", "Unknown")
-            }
-            for q in recent_activity
-        ]
-    }
+    return response.data
 
 @app.get("/api/professor/students")
 async def get_student_analytics(course_id: str = "cs50"):
-    """Get student analytics"""
-    from datetime import datetime, timedelta
+    """Get student analytics using agentic architecture"""
+    response = await professor_orchestrator.get_student_analytics(course_id)
     
-    # Analyze each student
-    students = {}
+    if not response.success:
+        raise HTTPException(status_code=500, detail=response.error)
     
-    # Collect data per student
-    for q in professor_service.question_logs:
-        student_id = q["student_id"]
-        if student_id not in students:
-            students[student_id] = {
-                "student_id": student_id,
-                "questions_asked": 0,
-                "avg_confidence": 0,
-                "confusion_signals": 0,
-                "last_active": None,
-                "topics": set()
-            }
-        
-        students[student_id]["questions_asked"] += 1
-        students[student_id]["topics"].add(q.get("section", "Unknown"))
-        
-        if students[student_id]["last_active"] is None or q["timestamp"] > students[student_id]["last_active"]:
-            students[student_id]["last_active"] = q["timestamp"]
-    
-    # Count confusion signals
-    for signal in professor_service.confusion_signals:
-        student_id = signal.student_id
-        if student_id in students:
-            students[student_id]["confusion_signals"] += 1
-    
-    # Calculate avg confidence
-    for student_id in students:
-        student_questions = [q for q in professor_service.question_logs if q["student_id"] == student_id]
-        if student_questions:
-            students[student_id]["avg_confidence"] = sum(q["confidence"] for q in student_questions) / len(student_questions)
-    
-    # Categorize students
-    for student in students.values():
-        student["topics"] = list(student["topics"])
-        student["last_active"] = student["last_active"].isoformat() if student["last_active"] else None
-        
-        # Determine status
-        if student["confusion_signals"] >= 3:
-            student["status"] = "struggling"
-        elif student["questions_asked"] == 0:
-            student["status"] = "silent"
-        elif student["avg_confidence"] > 0.8:
-            student["status"] = "thriving"
-        else:
-            student["status"] = "active"
-    
-    return {"students": list(students.values())}
+    return {"students": response.data.get('students', [])}
 
 @app.get("/api/professor/content-gaps")
 async def get_content_gaps(course_id: str = "cs50"):
-    """Identify content gaps"""
-    from mock_data_generator import MockDataGenerator
+    """Identify content gaps using agentic architecture"""
+    response = await professor_orchestrator.get_content_gaps(course_id)
     
-    generator = MockDataGenerator(professor_service)
-    gaps = generator.generate_content_gaps()
+    if not response.success:
+        raise HTTPException(status_code=500, detail=response.error)
     
-    return {"gaps": gaps}
+    return {"gaps": response.data.get('gaps', [])}
 
 @app.post("/api/professor/seed-demo-data")
 async def seed_demo_data():
@@ -577,49 +517,74 @@ async def seed_demo_data():
 
 @app.get("/api/professor/clusters", response_model=List[QuestionCluster])
 async def get_question_clusters(course_id: str = "cs50", min_count: int = 2, semantic: bool = True):
-    """Get question clusters for professor review"""
-    if semantic:
-        # Use semantic clustering with embeddings
-        return professor_service.get_semantic_clusters(course_id, similarity_threshold=0.7, min_count=min_count)
-    else:
-        # Use simple keyword-based clustering
-        return professor_service.get_question_clusters(course_id, min_count)
+    """Get question clusters for professor review using agentic architecture"""
+    response = await professor_orchestrator.get_question_clusters(course_id, min_count, semantic)
+    
+    if not response.success:
+        raise HTTPException(status_code=500, detail=response.error)
+    
+    # Return clusters as list for response_model
+    return response.data.get('clusters', [])
 
 @app.post("/api/professor/canonical-answer", response_model=CanonicalAnswer)
 async def create_canonical_answer(request: CreateCanonicalAnswerRequest, professor_id: str = "prof1"):
-    """Create a canonical answer for a question cluster"""
-    return professor_service.create_canonical_answer(request, professor_id)
+    """Create a canonical answer for a question cluster using agentic architecture"""
+    response = await professor_orchestrator.create_canonical_answer(request.dict(), professor_id)
+    
+    if not response.success:
+        raise HTTPException(status_code=500, detail=response.error)
+    
+    return response.data.get('canonical_answer')
 
 @app.post("/api/professor/canonical-answer/{answer_id}/publish", response_model=CanonicalAnswer)
 async def publish_canonical_answer(answer_id: str):
-    """Publish a canonical answer"""
-    try:
-        return professor_service.publish_canonical_answer(answer_id)
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+    """Publish a canonical answer using agentic architecture"""
+    response = await professor_orchestrator.publish_canonical_answer(answer_id)
+    
+    if not response.success:
+        raise HTTPException(status_code=404, detail=response.error)
+    
+    return response.data.get('canonical_answer')
 
 @app.get("/api/professor/unresolved", response_model=List[UnresolvedItem])
 async def get_unresolved_queue(course_id: str = "cs50"):
-    """Get unresolved queue items"""
-    return professor_service.get_unresolved_queue(course_id)
+    """Get unresolved queue items using agentic architecture"""
+    response = await professor_orchestrator.get_unresolved_queue(course_id)
+    
+    if not response.success:
+        raise HTTPException(status_code=500, detail=response.error)
+    
+    return response.data.get('unresolved_items', [])
 
 @app.post("/api/professor/resolve", response_model=UnresolvedItem)
 async def resolve_item(request: ResolveItemRequest, professor_id: str = "prof1"):
-    """Resolve an unresolved queue item"""
-    try:
-        return professor_service.resolve_item(request, professor_id)
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+    """Resolve an unresolved queue item using agentic architecture"""
+    response = await professor_orchestrator.resolve_item(request.dict(), professor_id)
+    
+    if not response.success:
+        raise HTTPException(status_code=404, detail=response.error)
+    
+    return response.data.get('resolved_item')
 
 @app.get("/api/professor/confusion-heatmap", response_model=List[ConfusionHeatmapEntry])
 async def get_confusion_heatmap(course_id: str = "cs50", days: int = 7):
-    """Get confusion heatmap"""
-    return professor_service.get_confusion_heatmap(course_id, days)
+    """Get confusion heatmap using agentic architecture"""
+    response = await professor_orchestrator.get_confusion_heatmap(course_id, days)
+    
+    if not response.success:
+        raise HTTPException(status_code=500, detail=response.error)
+    
+    return response.data.get('heatmap', [])
 
 @app.get("/api/professor/guardrails", response_model=GuardrailSettings)
 async def get_guardrail_settings(course_id: str = "cs50"):
-    """Get guardrail settings"""
-    return professor_service.get_guardrail_settings(course_id)
+    """Get guardrail settings using agentic architecture"""
+    response = await professor_orchestrator.get_guardrail_settings(course_id)
+    
+    if not response.success:
+        raise HTTPException(status_code=500, detail=response.error)
+    
+    return response.data.get('settings')
 
 @app.put("/api/professor/guardrails", response_model=GuardrailSettings)
 async def update_guardrail_settings(
@@ -627,8 +592,15 @@ async def update_guardrail_settings(
     request: UpdateGuardrailRequest, 
     professor_id: str = "prof1"
 ):
-    """Update guardrail settings"""
-    return professor_service.update_guardrail_settings(course_id, request, professor_id)
+    """Update guardrail settings using agentic architecture"""
+    response = await professor_orchestrator.update_guardrail_settings(
+        course_id, request.dict(), professor_id
+    )
+    
+    if not response.success:
+        raise HTTPException(status_code=500, detail=response.error)
+    
+    return response.data.get('settings')
 
 # ============================================================================
 # ADAPTIVE LEARNING ENDPOINTS

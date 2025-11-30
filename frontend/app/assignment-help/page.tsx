@@ -611,7 +611,7 @@ What would you like help with?`,
                 {message.role === 'assistant' && message.response && (
                   <div className="flex gap-3 mb-4">
                     <div className="w-8 h-8 bg-gradient-to-br from-orange-400 to-orange-600 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm">
-                      <Bot size={16} className="text-white" />
+                      <GraduationCap size={16} className="text-white" />
                     </div>
                     <div className="flex-1 max-w-lg">
                       <div className="bg-white border border-gray-200 rounded-xl px-4 py-3 shadow-sm">
@@ -700,7 +700,7 @@ What would you like help with?`,
             {loading && selectedProblem && (
               <div className="flex gap-3 mb-4">
                 <div className="w-8 h-8 bg-gradient-to-br from-orange-400 to-orange-600 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm">
-                  <span className="text-white text-sm">🤖</span>
+                  <GraduationCap size={16} className="text-white" />
                 </div>
                 <div className="flex-1 max-w-lg">
                   <div className="bg-white border border-gray-200 rounded-xl px-4 py-3 shadow-sm">

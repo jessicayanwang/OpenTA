@@ -64,10 +64,21 @@ class ClusteringAgent(BaseAgent):
         
         clusters = self.professor_service.get_question_clusters(course_id, min_count)
         
+        # Enrich clusters with canonical answer text if available
+        enriched_clusters = []
+        for c in clusters:
+            cluster_dict = c.dict()
+            if c.canonical_answer_id:
+                canonical = self.professor_service.canonical_answers.get(c.canonical_answer_id)
+                if canonical:
+                    cluster_dict['canonical_answer'] = canonical.answer_markdown
+                    cluster_dict['last_updated'] = canonical.updated_at.strftime('%Y-%m-%d')
+            enriched_clusters.append(cluster_dict)
+        
         return self.create_response(
             success=True,
             data={
-                'clusters': [c.dict() for c in clusters],
+                'clusters': enriched_clusters,
                 'total_count': len(clusters)
             },
             confidence=1.0,
@@ -85,10 +96,21 @@ class ClusteringAgent(BaseAgent):
             min_count=min_count
         )
         
+        # Enrich clusters with canonical answer text if available
+        enriched_clusters = []
+        for c in clusters:
+            cluster_dict = c.dict()
+            if c.canonical_answer_id:
+                canonical = self.professor_service.canonical_answers.get(c.canonical_answer_id)
+                if canonical:
+                    cluster_dict['canonical_answer'] = canonical.answer_markdown
+                    cluster_dict['last_updated'] = canonical.updated_at.strftime('%Y-%m-%d')
+            enriched_clusters.append(cluster_dict)
+        
         return self.create_response(
             success=True,
             data={
-                'clusters': [c.dict() for c in clusters],
+                'clusters': enriched_clusters,
                 'total_count': len(clusters),
                 'similarity_threshold': similarity_threshold
             },

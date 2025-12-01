@@ -200,101 +200,9 @@ export default function ProfessorConsole() {
         const res = await fetch('http://localhost:8000/api/professor/clusters?course_id=cs50&semantic=true&min_count=2')
         const data = await res.json()
         
-        // Add mock answered clusters
-        const answeredClusters = [
-          {
-            cluster_id: 'answered_1',
-            representative_question: 'How do I allocate memory with malloc?',
-            count: 42,
-            artifact: 'Pointers',
-            section: 'Week 3',
-            canonical_answer_id: 'ans_1',
-            canonical_answer: 'Memory allocation in C uses malloc() to dynamically allocate memory on the heap. You need to include <stdlib.h> and remember to free the memory when done to avoid memory leaks.',
-            similar_questions: [
-              'What is malloc used for?',
-              'How to allocate memory in C?',
-              'Difference between malloc and calloc?',
-              'Why do I need to free memory?',
-              'How much memory does malloc allocate?'
-            ],
-            last_updated: '2 days ago'
-          },
-          {
-            cluster_id: 'answered_2',
-            representative_question: 'What is the difference between arrays and pointers?',
-            count: 28,
-            artifact: 'Pointers',
-            section: 'Week 3',
-            canonical_answer_id: 'ans_2',
-            canonical_answer: 'Arrays and pointers are closely related in C. An array name is essentially a pointer to the first element. However, arrays have fixed size and pointers can be reassigned.',
-            similar_questions: [
-              'Are arrays and pointers the same?',
-              'Can I use array notation with pointers?',
-              'Why does array[i] equal *(array + i)?',
-              'Can I reassign an array name?',
-              'What is pointer arithmetic?'
-            ],
-            last_updated: '5 days ago'
-          },
-          {
-            cluster_id: 'answered_3',
-            representative_question: 'How do I debug segmentation faults?',
-            count: 35,
-            artifact: 'Debugging',
-            section: 'Week 4',
-            canonical_answer_id: 'ans_3',
-            canonical_answer: 'Segmentation faults occur when you access memory you shouldn\'t. Use valgrind to detect memory errors, check array bounds, ensure pointers are initialized, and verify malloc succeeded.',
-            similar_questions: [
-              'What causes segfaults?',
-              'How to fix segmentation fault?',
-              'Why does my program crash with segfault?',
-              'How to use valgrind?',
-              'What is a null pointer dereference?'
-            ],
-            last_updated: '1 week ago'
-          }
-        ]
-        
-        // Add mock unanswered clusters with reasonable counts
-        const unansweredClusters = [
-          {
-            cluster_id: 'unanswered_1',
-            representative_question: 'How do I implement a linked list in C?',
-            count: 23,
-            artifact: 'Data Structures',
-            section: 'Week 5',
-            canonical_answer_id: null,
-            similar_questions: [
-              'What is a linked list?',
-              'How to create nodes in C?',
-              'How to traverse a linked list?',
-              'How to insert at the beginning?'
-            ],
-            created_at: '2024-01-15',
-            last_seen: '2024-01-20'
-          },
-          {
-            cluster_id: 'unanswered_2',
-            representative_question: 'When should I use struct vs typedef?',
-            count: 31,
-            artifact: 'Structs',
-            section: 'Week 4',
-            canonical_answer_id: null,
-            similar_questions: [
-              'What is typedef?',
-              'Difference between struct and typedef struct?',
-              'How to define custom types?',
-              'Best practices for structs?'
-            ],
-            created_at: '2024-01-14',
-            last_seen: '2024-01-20'
-          }
-        ]
-        
-        // Filter backend data to only include reasonable counts
-        const filteredData = data.filter((cluster: QuestionCluster) => cluster.count <= 50)
-        
-        setClusters([...answeredClusters, ...unansweredClusters, ...filteredData])
+        // Use clusters directly from backend - they have canonical_answer_id field
+        // that determines if they're answered or not
+        setClusters(data)
       }
     } catch (error) {
       console.error('Error loading data:', error)
@@ -338,7 +246,8 @@ export default function ProfessorConsole() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           cluster_id: selectedCluster.cluster_id,
-          answer_text: canonicalAnswer,
+          question: selectedCluster.representative_question,
+          answer_markdown: canonicalAnswer,
           citations: []
         })
       })

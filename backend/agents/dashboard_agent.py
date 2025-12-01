@@ -67,77 +67,82 @@ class DashboardAgent(BaseAgent):
     
     async def _get_dashboard_metrics(self, content: Dict[str, Any], course_id: str) -> AgentResponse:
         """Get dashboard overview metrics"""
+        from database import QuestionLogDB
         days = content.get('days', 7)
         cutoff = datetime.now() - timedelta(days=days)
         
-        recent_questions = [
-            q for q in self.professor_service.question_logs 
-            if q["timestamp"] >= cutoff
-        ]
-        
-        # Calculate metrics
-        total_questions = len(recent_questions)
-        avg_confidence = (
-            sum(q["confidence"] for q in recent_questions) / max(len(recent_questions), 1)
-        )
-        
-        # Count struggling students (3+ confusion signals)
-        student_confusion_count = {}
-        for signal in self.professor_service.confusion_signals:
-            if signal.timestamp >= cutoff:
-                student_id = signal.student_id
-                student_confusion_count[student_id] = student_confusion_count.get(student_id, 0) + 1
-        
-        struggling_students = len([
-            s for s, count in student_confusion_count.items() if count >= 3
-        ])
-        
-        # Unresolved count
-        unresolved_count = len([
-            item for item in self.professor_service.unresolved_queue.values() 
-            if not item.resolved
-        ])
-        
-        # Top confusion topics
-        topic_confusion = {}
-        for signal in self.professor_service.confusion_signals:
-            if signal.timestamp >= cutoff:
-                topic = signal.section or signal.artifact
-                topic_confusion[topic] = topic_confusion.get(topic, 0) + 1
-        
-        top_topics = sorted(topic_confusion.items(), key=lambda x: x[1], reverse=True)[:5]
-        
-        # Recent activity (last 10 questions)
-        recent_activity = sorted(
-            recent_questions, key=lambda x: x["timestamp"], reverse=True
-        )[:10]
-        
-        return self.create_response(
-            success=True,
-            data={
-                'metrics': {
-                    'total_questions': total_questions,
-                    'avg_confidence': round(avg_confidence, 2),
-                    'struggling_students': struggling_students,
-                    'unresolved_items': unresolved_count
+        session = self.professor_service.db.get_session()
+        try:
+            # Get recent questions from database
+            recent_questions = session.query(QuestionLogDB).filter(
+                QuestionLogDB.timestamp >= cutoff
+            ).all()
+            
+            # Calculate metrics
+            total_questions = len(recent_questions)
+            avg_confidence = (
+                sum(q.confidence for q in recent_questions) / max(len(recent_questions), 1)
+            )
+            
+            # Count struggling students (3+ confusion signals)
+            student_confusion_count = {}
+            for signal in self.professor_service.confusion_signals:
+                if signal.timestamp >= cutoff:
+                    student_id = signal.student_id
+                    student_confusion_count[student_id] = student_confusion_count.get(student_id, 0) + 1
+            
+            struggling_students = len([
+                s for s, count in student_confusion_count.items() if count >= 3
+            ])
+            
+            # Unresolved count
+            unresolved_count = len([
+                item for item in self.professor_service.unresolved_queue.values() 
+                if not item.resolved
+            ])
+            
+            # Top confusion topics
+            topic_confusion = {}
+            for signal in self.professor_service.confusion_signals:
+                if signal.timestamp >= cutoff:
+                    topic = signal.section or signal.artifact
+                    topic_confusion[topic] = topic_confusion.get(topic, 0) + 1
+            
+            top_topics = sorted(topic_confusion.items(), key=lambda x: x[1], reverse=True)[:5]
+            
+            # Recent activity (last 10 questions)
+            recent_activity = sorted(
+                recent_questions, key=lambda x: x.timestamp, reverse=True
+            )[:10]
+            
+            return self.create_response(
+                success=True,
+                data={
+                    'metrics': {
+                        'total_questions': total_questions,
+                        'avg_confidence': round(avg_confidence, 2),
+                        'struggling_students': struggling_students,
+                        'unresolved_items': unresolved_count
+                    },
+                    'top_confusion_topics': [
+                        {'topic': topic, 'count': count} for topic, count in top_topics
+                    ],
+                    'recent_activity': [
+                        {
+                            'question': q.question,
+                            'student_id': q.student_id,
+                            'confidence': q.confidence,
+                            'timestamp': q.timestamp.isoformat(),
+                            'artifact': q.artifact or "Unknown"
+                        }
+                        for q in recent_activity
+                    ]
                 },
-                'top_confusion_topics': [
-                    {'topic': topic, 'count': count} for topic, count in top_topics
-                ],
-                'recent_activity': [
-                    {
-                        'question': q["question"],
-                        'student_id': q["student_id"],
-                        'confidence': q["confidence"],
-                        'timestamp': q["timestamp"].isoformat(),
-                        'artifact': q.get("artifact", "Unknown")
-                    }
-                    for q in recent_activity
-                ]
-            },
-            confidence=1.0,
-            reasoning=f"Calculated dashboard metrics for last {days} days"
-        )
+                confidence=1.0,
+                reasoning=f"Calculated dashboard metrics for last {days} days"
+            )
+        finally:
+            session.close()
     
     async def _get_confusion_heatmap(self, content: Dict[str, Any], course_id: str) -> AgentResponse:
         """Get confusion heatmap"""
@@ -148,7 +153,7 @@ class DashboardAgent(BaseAgent):
         return self.create_response(
             success=True,
             data={
-                'heatmap': [entry.dict() for entry in heatmap],
+                'heatmap': [entry.model_dump() for entry in heatmap],
                 'total_entries': len(heatmap)
             },
             confidence=1.0,
@@ -157,71 +162,79 @@ class DashboardAgent(BaseAgent):
     
     async def _get_student_analytics(self, course_id: str) -> AgentResponse:
         """Get student analytics"""
-        students = {}
-        
-        # Collect data per student
-        for q in self.professor_service.question_logs:
-            student_id = q["student_id"]
-            if student_id not in students:
-                students[student_id] = {
-                    "student_id": student_id,
-                    "questions_asked": 0,
-                    "avg_confidence": 0,
-                    "confusion_signals": 0,
-                    "last_active": None,
-                    "topics": set()
-                }
+        from database import QuestionLogDB
+        session = self.professor_service.db.get_session()
+        try:
+            students = {}
             
-            students[student_id]["questions_asked"] += 1
-            students[student_id]["topics"].add(q.get("section", "Unknown"))
+            # Get all question logs from database
+            question_logs = session.query(QuestionLogDB).all()
             
-            if (students[student_id]["last_active"] is None or 
-                q["timestamp"] > students[student_id]["last_active"]):
-                students[student_id]["last_active"] = q["timestamp"]
+            # Collect data per student
+            for q in question_logs:
+                student_id = q.student_id
+                if student_id not in students:
+                    students[student_id] = {
+                        "student_id": student_id,
+                        "questions_asked": 0,
+                        "avg_confidence": 0,
+                        "confusion_signals": 0,
+                        "last_active": None,
+                        "topics": set()
+                    }
+                
+                students[student_id]["questions_asked"] += 1
+                students[student_id]["topics"].add(q.section or "Unknown")
+                
+                if (students[student_id]["last_active"] is None or 
+                    q.timestamp > students[student_id]["last_active"]):
+                    students[student_id]["last_active"] = q.timestamp
+            
+            # Count confusion signals
+            for signal in self.professor_service.confusion_signals:
+                student_id = signal.student_id
+                if student_id in students:
+                    students[student_id]["confusion_signals"] += 1
+            
+            # Calculate avg confidence
+            for student_id in students:
+                student_questions = [
+                    q for q in question_logs 
+                    if q.student_id == student_id
+                ]
+                if student_questions:
+                    students[student_id]["avg_confidence"] = (
+                        sum(q.confidence for q in student_questions) / len(student_questions)
+                    )
         
-        # Count confusion signals
-        for signal in self.professor_service.confusion_signals:
-            student_id = signal.student_id
-            if student_id in students:
-                students[student_id]["confusion_signals"] += 1
-        
-        # Calculate avg confidence
-        for student_id in students:
-            student_questions = [
-                q for q in self.professor_service.question_logs 
-                if q["student_id"] == student_id
-            ]
-            if student_questions:
-                students[student_id]["avg_confidence"] = (
-                    sum(q["confidence"] for q in student_questions) / len(student_questions)
+            # Categorize students
+            for student in students.values():
+                student["topics"] = list(student["topics"])
+                student["last_active"] = (
+                    student["last_active"].isoformat() if student["last_active"] else None
                 )
-        
-        # Categorize students
-        for student in students.values():
-            student["topics"] = list(student["topics"])
-            student["last_active"] = (
-                student["last_active"].isoformat() if student["last_active"] else None
-            )
+                
+                # Determine status
+                if student["confusion_signals"] >= 3:
+                    student["status"] = "struggling"
+                elif student["questions_asked"] == 0:
+                    student["status"] = "silent"
+                elif student["avg_confidence"] > 0.8:
+                    student["status"] = "thriving"
+                else:
+                    student["status"] = "active"
             
-            # Determine status
-            if student["confusion_signals"] >= 3:
-                student["status"] = "struggling"
-            elif student["questions_asked"] == 0:
-                student["status"] = "silent"
-            elif student["avg_confidence"] > 0.8:
-                student["status"] = "thriving"
-            else:
-                student["status"] = "active"
-        
-        return self.create_response(
-            success=True,
-            data={
-                'students': list(students.values()),
-                'total_count': len(students)
-            },
-            confidence=1.0,
-            reasoning=f"Analyzed {len(students)} students"
-        )
+            return self.create_response(
+                success=True,
+                data={
+                    'students': list(students.values()),
+                    'total_count': len(students)
+                },
+                confidence=1.0,
+                reasoning=f"Analyzed {len(students)} students"
+            )
+        finally:
+            session.close()
     
     async def _get_content_gaps(self, course_id: str) -> AgentResponse:
         """Identify content gaps"""

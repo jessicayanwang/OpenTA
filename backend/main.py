@@ -390,23 +390,28 @@ async def get_faq(course_id: str = "cs50"):
     answers = professor_service.get_all_published_canonical_answers()
     
     # Format for frontend
-    faq_items = []
-    for answer in answers:
-        # Find the cluster to get representative question
-        representative_question = "General Question"
-        for cluster in professor_service.clusters.values():
-            if cluster.canonical_answer_id == answer.answer_id:
-                representative_question = cluster.representative_question
-                break
+    from database import db_manager, QuestionClusterDB
+    session = db_manager.get_session()
+    try:
+        faq_items = []
+        for answer in answers:
+            # Find the cluster to get representative question
+            cluster = session.query(QuestionClusterDB).filter_by(
+                canonical_answer_id=answer.answer_id
+            ).first()
+            
+            representative_question = cluster.representative_question if cluster else answer.question
+            
+            faq_items.append({
+                "question": representative_question,
+                "answer": answer.answer_markdown,
+                "created_at": answer.created_at.isoformat(),
+                "created_by": answer.created_by
+            })
         
-        faq_items.append({
-            "question": representative_question,
-            "answer": answer.answer_text,
-            "created_at": answer.created_at.isoformat(),
-            "created_by": answer.created_by
-        })
-    
-    return {"faq": faq_items}
+        return {"faq": faq_items}
+    finally:
+        session.close()
 
 @app.post("/api/assignment-help", response_model=AssignmentHelpResponse)
 async def assignment_help(request: AssignmentHelpRequest, student_id: str = "student1"):
@@ -561,7 +566,7 @@ async def get_question_clusters(course_id: str = "cs50", min_count: int = 2, sem
 @app.post("/api/professor/canonical-answer", response_model=CanonicalAnswer)
 async def create_canonical_answer(request: CreateCanonicalAnswerRequest, professor_id: str = "prof1"):
     """Create a canonical answer for a question cluster using agentic architecture"""
-    response = await professor_orchestrator.create_canonical_answer(request.dict(), professor_id)
+    response = await professor_orchestrator.create_canonical_answer(request.model_dump(), professor_id)
     
     if not response.success:
         raise HTTPException(status_code=500, detail=response.error)
@@ -591,7 +596,7 @@ async def get_unresolved_queue(course_id: str = "cs50"):
 @app.post("/api/professor/resolve", response_model=UnresolvedItem)
 async def resolve_item(request: ResolveItemRequest, professor_id: str = "prof1"):
     """Resolve an unresolved queue item using agentic architecture"""
-    response = await professor_orchestrator.resolve_item(request.dict(), professor_id)
+    response = await professor_orchestrator.resolve_item(request.model_dump(), professor_id)
     
     if not response.success:
         raise HTTPException(status_code=404, detail=response.error)
@@ -626,7 +631,7 @@ async def update_guardrail_settings(
 ):
     """Update guardrail settings using agentic architecture"""
     response = await professor_orchestrator.update_guardrail_settings(
-        course_id, request.dict(), professor_id
+        course_id, request.model_dump(), professor_id
     )
     
     if not response.success:

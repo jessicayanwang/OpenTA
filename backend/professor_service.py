@@ -136,7 +136,7 @@ class ProfessorService:
                 cluster_id=request.cluster_id,
                 question=request.question,
                 answer_markdown=request.answer_markdown,
-                citations=json.dumps([c.dict() for c in request.citations]),
+                citations=json.dumps([c.model_dump() if hasattr(c, 'model_dump') else c for c in request.citations]),
                 created_by=professor_id,
                 created_at=now,
                 updated_at=now,
@@ -148,10 +148,24 @@ class ProfessorService:
             cluster = session.query(QuestionClusterDB).filter_by(
                 cluster_id=request.cluster_id
             ).first()
+            
             if cluster:
+                print(f"✅ Linking answer {answer_id} to cluster {request.cluster_id}")
                 cluster.canonical_answer_id = answer_id
+            else:
+                print(f"❌ WARNING: Cluster {request.cluster_id} not found in database!")
             
             session.commit()
+            print(f"✅ Created canonical answer {answer_id} and committed to database")
+            
+            # Verify the update was saved
+            verification = session.query(QuestionClusterDB).filter_by(
+                cluster_id=request.cluster_id
+            ).first()
+            if verification and verification.canonical_answer_id:
+                print(f"✅ VERIFIED: Cluster {request.cluster_id} now has canonical_answer_id: {verification.canonical_answer_id}")
+            else:
+                print(f"❌ VERIFICATION FAILED: Cluster {request.cluster_id} still has no canonical_answer_id!")
             
             # Return Pydantic model
             return CanonicalAnswer(

@@ -61,7 +61,9 @@ class StudentProfile:
         """Determine if student is struggling based on confusion signals"""
         recent_confusions = [
             c for c in self.confusion_signals
-            if (datetime.now() - datetime.fromisoformat(c["timestamp"])).seconds < 3600
+            if (datetime.now() - datetime.fromisoformat(
+                c["timestamp"].replace('Z', '+00:00') if 'Z' in c["timestamp"] else c["timestamp"]
+            )).seconds < 3600
         ]
         return len(recent_confusions) >= 3
     

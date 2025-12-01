@@ -795,7 +795,9 @@ async def create_exam_runway(request: ExamRunwayRequest):
     if not exam_runway_service:
         raise HTTPException(status_code=503, detail="Adaptive learning not initialized")
     
-    exam_date = datetime.fromisoformat(request.exam_date)
+    # Handle 'Z' timezone indicator (UTC) - fromisoformat doesn't support 'Z'
+    exam_date_str = request.exam_date.replace('Z', '+00:00')
+    exam_date = datetime.fromisoformat(exam_date_str)
     
     runway = exam_runway_service.generate_runway(
         request.student_id,

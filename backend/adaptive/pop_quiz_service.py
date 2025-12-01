@@ -53,8 +53,11 @@ class PopQuizService:
             print("  ⚠ OpenAI not configured - using simple patterns")
         
         # Cache for generated questions (to avoid regenerating)
-        self.question_cache: Dict[str, PopQuizItem] = {}
-        print("  ✓ Pop Quiz Service ready (on-demand generation)")
+        # Structure: {topic_key: [PopQuizItem, ...]} - pool of questions per topic
+        self.question_cache: Dict[str, PopQuizItem] = {}  # question_id -> PopQuizItem
+        self.topic_question_pool: Dict[str, List[PopQuizItem]] = {}  # topic -> [questions]
+        self.answered_questions: Dict[str, set] = {}  # student_id -> {question_ids}
+        print("  ✓ Pop Quiz Service ready (on-demand generation with caching)")
     
     def _determine_quiz_scope(self, student_id: str, quiz_type: str = "daily") -> Dict:
         """
@@ -400,8 +403,15 @@ Return ONLY a JSON array with this exact format:
         1. Weak topics (what student got wrong)
         2. Spaced repetition schedule (forgetting curve)
         3. Recent course material (what's been taught)
+        
+        OPTIMIZED: Uses topic-based question caching to avoid regenerating questions
         """
         quiz_items = []
+        
+        # Initialize answered questions set for this student
+        if student_id not in self.answered_questions:
+            self.answered_questions[student_id] = set()
+        answered = self.answered_questions[student_id]
         
         # STEP 1: Determine scope (multi-agent: context analyzer)
         scope = self._determine_quiz_scope(student_id, quiz_type="daily")
@@ -432,37 +442,76 @@ Return ONLY a JSON array with this exact format:
         if not subtopics_to_quiz:
             subtopics_to_quiz = ["C Programming Basics", "Algorithms", "Memory Management", "Arrays and Strings", "Data Structures"]
         
-        # STEP 3: Collect all chunks first (fast retrieval step)
-        chunks_with_topics = []
+        # STEP 3: Try to get questions from cache first (FAST PATH)
+        topics_needing_generation = []
         for subtopic_key in subtopics_to_quiz[:num_items]:
-            # Parse subtopic key (format: "Topic: Subtopic" or just "Topic")
-            if ": " in subtopic_key:
-                topic, specific_subtopic = subtopic_key.split(": ", 1)
-                query = f"{topic} {specific_subtopic} concepts and examples"
-            else:
-                topic = subtopic_key
-                query = f"{topic} concepts and examples"
+            # Normalize topic key for cache lookup
+            topic = subtopic_key.split(": ")[0] if ": " in subtopic_key else subtopic_key
             
-            chunks = self.retriever.retrieve(query, top_k=1)
-            if chunks:
-                chunk = chunks[0][0]  # Get top chunk
-                chunks_with_topics.append((chunk, topic))
+            # Check if we have cached questions for this topic
+            if topic in self.topic_question_pool:
+                # Get questions from pool that student hasn't answered
+                available_questions = [
+                    q for q in self.topic_question_pool[topic]
+                    if q.question_id not in answered
+                ]
+                
+                if available_questions:
+                    # Use cached question (instant!)
+                    quiz_items.append(available_questions[0])
+                    continue
+            
+            # Need to generate for this topic
+            topics_needing_generation.append(subtopic_key)
         
-        # STEP 4: Generate ALL questions in a single batched OpenAI call
-        if chunks_with_topics and self.use_openai:
-            quiz_items = self._generate_questions_batch_openai(chunks_with_topics)
-            # Cache all questions for later submission
-            for question in quiz_items:
-                self.question_cache[question.question_id] = question
-        
-        # Fallback: If batch failed or OpenAI not available, generate individually
-        if not quiz_items:
-            for chunk, topic in chunks_with_topics:
-                questions = self._generate_questions_from_chunk(chunk, topic)
-                if questions:
-                    question = questions[0]
-                    quiz_items.append(question)
+        # STEP 4: Generate questions only for topics not in cache (SLOW PATH)
+        if topics_needing_generation and len(quiz_items) < num_items:
+            chunks_with_topics = []
+            for subtopic_key in topics_needing_generation:
+                # Parse subtopic key (format: "Topic: Subtopic" or just "Topic")
+                if ": " in subtopic_key:
+                    topic, specific_subtopic = subtopic_key.split(": ", 1)
+                    query = f"{topic} {specific_subtopic} concepts and examples"
+                else:
+                    topic = subtopic_key
+                    query = f"{topic} concepts and examples"
+                
+                chunks = self.retriever.retrieve(query, top_k=1)
+                if chunks:
+                    chunk = chunks[0][0]  # Get top chunk
+                    chunks_with_topics.append((chunk, topic))
+            
+            # Generate ALL questions in a single batched OpenAI call
+            if chunks_with_topics and self.use_openai:
+                new_questions = self._generate_questions_batch_openai(chunks_with_topics)
+                
+                # Add to cache and pool
+                for question in new_questions:
                     self.question_cache[question.question_id] = question
+                    topic = question.topic
+                    if topic not in self.topic_question_pool:
+                        self.topic_question_pool[topic] = []
+                    self.topic_question_pool[topic].append(question)
+                    
+                    # Add to quiz if we still need items and student hasn't answered it
+                    if len(quiz_items) < num_items and question.question_id not in answered:
+                        quiz_items.append(question)
+            
+            # Fallback: If batch failed or OpenAI not available, generate individually
+            if len(quiz_items) < num_items:
+                for chunk, topic in chunks_with_topics:
+                    questions = self._generate_questions_from_chunk(chunk, topic)
+                    if questions:
+                        question = questions[0]
+                        self.question_cache[question.question_id] = question
+                        if topic not in self.topic_question_pool:
+                            self.topic_question_pool[topic] = []
+                        self.topic_question_pool[topic].append(question)
+                        
+                        if question.question_id not in answered:
+                            quiz_items.append(question)
+                            if len(quiz_items) >= num_items:
+                                break
         
         return quiz_items[:num_items]
     
@@ -548,6 +597,11 @@ Return ONLY a JSON array with this exact format:
         Submit an answer to a quiz item and update spaced repetition
         """
         is_correct = (selected_index == quiz_item.correct_index)
+        
+        # Track that this question has been answered (for caching optimization)
+        if student_id not in self.answered_questions:
+            self.answered_questions[student_id] = set()
+        self.answered_questions[student_id].add(quiz_item.question_id)
         
         # Convert to review card if not already tracked
         card = self._quiz_item_to_card(quiz_item)

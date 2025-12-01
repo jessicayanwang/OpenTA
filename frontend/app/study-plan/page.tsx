@@ -57,10 +57,10 @@ export default function StudyPlanPage() {
   // View state
   const [activeView, setActiveView] = useState<'quiz' | 'chat' | 'exam-prep'>('quiz')
   
-  // Load quiz on mount
+  // Load only non-blocking data on mount (history from localStorage, exam runway in background)
   useEffect(() => {
-    loadDailyQuiz()
     loadQuizHistory()
+    // Load exam runway in background (non-blocking)
     checkExamRunway()
   }, [])
   
@@ -85,7 +85,7 @@ export default function StudyPlanPage() {
   }
   
   const loadQuizHistory = () => {
-    // Load from localStorage
+    // Load from localStorage (instant, no API call)
     const saved = localStorage.getItem(`quiz_history_${studentId}`)
     if (saved) {
       setQuizHistory(JSON.parse(saved))
@@ -93,6 +93,7 @@ export default function StudyPlanPage() {
   }
   
   const checkExamRunway = async () => {
+    // Non-blocking background call - doesn't affect page load
     try {
       const res = await fetch(`http://localhost:8000/api/adaptive/exam-runway`, {
         method: 'POST',
@@ -260,6 +261,7 @@ export default function StudyPlanPage() {
                 onClick={() => {
                   setActiveView('quiz')
                   setShowReminder(false)
+                  loadDailyQuiz() // Lazy load quiz only when user clicks
                 }}
                 className="bg-white text-orange-600 px-3 py-1.5 rounded-lg font-semibold text-sm hover:bg-orange-50 transition-all"
               >
@@ -283,9 +285,12 @@ export default function StudyPlanPage() {
               <button
                 onClick={() => {
                   setShowHistory(true)
+                  setShowResults(false) // Close results view when opening history
                   // Reset to current month when opening
                   setCalendarMonth(new Date().getMonth())
                   setCalendarYear(new Date().getFullYear())
+                  // Reload history from localStorage to ensure it's up to date
+                  loadQuizHistory()
                 }}
                 className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-all"
               >
@@ -296,7 +301,7 @@ export default function StudyPlanPage() {
           </div>
 
           {/* Quiz History Calendar */}
-          {showHistory && viewingDate === null && !showResults && (
+          {showHistory && viewingDate === null && (
             <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold">Quiz History Calendar</h2>
@@ -667,6 +672,25 @@ export default function StudyPlanPage() {
             <div className="bg-white rounded-xl border border-gray-200 shadow-lg p-10 text-center">
               <div className="animate-spin w-10 h-10 border-4 border-orange-500 border-t-transparent rounded-full mx-auto mb-3" />
               <p className="text-sm text-gray-600">Generating your personalized quiz...</p>
+            </div>
+          )}
+
+          {/* Empty State - Prompt to Start Quiz */}
+          {!loading && !showHistory && !showResults && currentQuiz.length === 0 && viewingDate === null && (
+            <div className="bg-white rounded-xl border border-gray-200 shadow-lg p-10 text-center">
+              <div className="w-20 h-20 bg-gradient-to-r from-orange-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <BookOpen size={40} className="text-white" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Ready to Start Your Daily Quiz?</h2>
+              <p className="text-gray-600 mb-6">
+                Get 5 personalized questions based on your learning progress
+              </p>
+              <button
+                onClick={loadDailyQuiz}
+                className="px-6 py-3 bg-gradient-to-r from-orange-500 to-pink-500 text-white rounded-lg font-semibold hover:from-orange-600 hover:to-pink-600 transition-all"
+              >
+                Start Daily Quiz
+              </button>
             </div>
           )}
         </div>

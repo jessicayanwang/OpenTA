@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from collections import defaultdict
 import uuid
 import numpy as np
+import json
 from sklearn.metrics.pairwise import cosine_similarity
 from models import (
     QuestionCluster, CanonicalAnswer, CreateCanonicalAnswerRequest,
@@ -15,15 +16,16 @@ from models import (
     GuardrailSettings, UpdateGuardrailRequest,
     Citation
 )
+from database import db_manager, QuestionClusterDB, CanonicalAnswerDB, QuestionLogDB
 
 class ProfessorService:
     """Manages professor console features"""
     
     def __init__(self, embedder=None):
-        # In-memory storage (would be database in production)
-        self.question_logs: List[Dict] = []  # All student questions
-        self.clusters: Dict[str, QuestionCluster] = {}
-        self.canonical_answers: Dict[str, CanonicalAnswer] = {}
+        # Database for persistent storage
+        self.db = db_manager
+        
+        # In-memory cache for non-persisted data
         self.unresolved_queue: Dict[str, UnresolvedItem] = {}
         self.confusion_signals: List[ConfusionSignal] = []
         self.guardrail_settings: Dict[str, GuardrailSettings] = {}
@@ -33,52 +35,92 @@ class ProfessorService:
     def log_question(self, student_id: str, question: str, artifact: Optional[str], 
                     section: Optional[str], confidence: float, response: str):
         """Log a student question for clustering analysis"""
-        log_entry = {
-            "student_id": student_id,
-            "question": question,
-            "artifact": artifact,
-            "section": section,
-            "confidence": confidence,
-            "response": response,
-            "timestamp": datetime.now()
-        }
-        self.question_logs.append(log_entry)
+        session = self.db.get_session()
+        try:
+            log = QuestionLogDB(
+                student_id=student_id,
+                question=question,
+                artifact=artifact,
+                section=section,
+                confidence=confidence,
+                response=response,
+                timestamp=datetime.now()
+            )
+            session.add(log)
+            session.commit()
+            
+            # Update clusters
+            self._update_clusters(question, artifact, section, session)
+        finally:
+            session.close()
         
         # Check if should add to unresolved queue
         if confidence < 0.6:
             self._add_to_unresolved(student_id, question, artifact, section, 
                                    UnresolvedReason.LOW_CONFIDENCE, confidence, response)
         
-        # Simple clustering by artifact+section
-        self._update_clusters(question, artifact, section)
-        
-    def _update_clusters(self, question: str, artifact: Optional[str], section: Optional[str]):
+    def _update_clusters(self, question: str, artifact: Optional[str], section: Optional[str], session):
         """Simple clustering based on artifact and section"""
         cluster_key = f"{artifact or 'general'}_{section or 'general'}"
         
-        if cluster_key in self.clusters:
-            cluster = self.clusters[cluster_key]
-            cluster.similar_questions.append(question)
-            cluster.count += 1
-            cluster.last_seen = datetime.now()
+        # Find existing cluster in database
+        existing = session.query(QuestionClusterDB).filter_by(
+            artifact=artifact,
+            section=section
+        ).first()
+        
+        if existing:
+            # Update existing cluster
+            similar_questions = json.loads(existing.similar_questions)
+            similar_questions.append(question)
+            existing.similar_questions = json.dumps(similar_questions)
+            existing.count += 1
+            existing.last_seen = datetime.now()
+            session.commit()
         else:
+            # Create new cluster
             cluster_id = str(uuid.uuid4())
-            self.clusters[cluster_key] = QuestionCluster(
+            new_cluster = QuestionClusterDB(
                 cluster_id=cluster_id,
                 representative_question=question,
-                similar_questions=[question],
+                similar_questions=json.dumps([question]),
                 count=1,
                 artifact=artifact,
                 section=section,
+                canonical_answer_id=None,
                 created_at=datetime.now(),
                 last_seen=datetime.now()
             )
+            session.add(new_cluster)
+            session.commit()
     
     def get_question_clusters(self, course_id: str, min_count: int = 2) -> List[QuestionCluster]:
         """Get all question clusters with at least min_count questions"""
-        clusters = [c for c in self.clusters.values() if c.count >= min_count]
-        # Sort by count descending
-        return sorted(clusters, key=lambda x: x.count, reverse=True)
+        session = self.db.get_session()
+        try:
+            clusters_db = session.query(QuestionClusterDB).filter(
+                QuestionClusterDB.count >= min_count
+            ).all()
+            
+            # Convert to Pydantic models
+            clusters = []
+            for c in clusters_db:
+                clusters.append(QuestionCluster(
+                    cluster_id=c.cluster_id,
+                    representative_question=c.representative_question,
+                    similar_questions=json.loads(c.similar_questions),
+                    count=c.count,
+                    artifact=c.artifact,
+                    section=c.section,
+                    canonical_answer_id=c.canonical_answer_id,
+                    created_at=c.created_at,
+                    last_seen=c.last_seen
+                ))
+            
+            # Sort by count descending
+            return sorted(clusters, key=lambda x: x.count, reverse=True)
+        finally:
+            session.close()
     
     def create_canonical_answer(self, request: CreateCanonicalAnswerRequest, 
                                professor_id: str) -> CanonicalAnswer:
@@ -86,48 +128,104 @@ class ProfessorService:
         answer_id = str(uuid.uuid4())
         now = datetime.now()
         
-        canonical = CanonicalAnswer(
-            answer_id=answer_id,
-            cluster_id=request.cluster_id,
-            question=request.question,
-            answer_markdown=request.answer_markdown,
-            citations=request.citations,
-            created_by=professor_id,
-            created_at=now,
-            updated_at=now,
-            is_published=False
-        )
-        
-        self.canonical_answers[answer_id] = canonical
-        
-        # Link to cluster
-        for cluster in self.clusters.values():
-            if cluster.cluster_id == request.cluster_id:
+        session = self.db.get_session()
+        try:
+            # Create canonical answer in database
+            canonical_db = CanonicalAnswerDB(
+                answer_id=answer_id,
+                cluster_id=request.cluster_id,
+                question=request.question,
+                answer_markdown=request.answer_markdown,
+                citations=json.dumps([c.dict() for c in request.citations]),
+                created_by=professor_id,
+                created_at=now,
+                updated_at=now,
+                is_published=True  # Auto-publish for demo
+            )
+            session.add(canonical_db)
+            
+            # Link to cluster
+            cluster = session.query(QuestionClusterDB).filter_by(
+                cluster_id=request.cluster_id
+            ).first()
+            if cluster:
                 cluster.canonical_answer_id = answer_id
-                break
-        
-        return canonical
+            
+            session.commit()
+            
+            # Return Pydantic model
+            return CanonicalAnswer(
+                answer_id=answer_id,
+                cluster_id=request.cluster_id,
+                question=request.question,
+                answer_markdown=request.answer_markdown,
+                citations=request.citations,
+                created_by=professor_id,
+                created_at=now,
+                updated_at=now,
+                is_published=True
+            )
+        finally:
+            session.close()
     
     def publish_canonical_answer(self, answer_id: str) -> CanonicalAnswer:
         """Publish a canonical answer to make it available to students"""
-        if answer_id in self.canonical_answers:
-            self.canonical_answers[answer_id].is_published = True
-            self.canonical_answers[answer_id].updated_at = datetime.now()
-            return self.canonical_answers[answer_id]
-        raise ValueError(f"Canonical answer {answer_id} not found")
+        session = self.db.get_session()
+        try:
+            answer = session.query(CanonicalAnswerDB).filter_by(answer_id=answer_id).first()
+            if answer:
+                answer.is_published = True
+                answer.updated_at = datetime.now()
+                session.commit()
+                
+                # Return Pydantic model
+                return CanonicalAnswer(
+                    answer_id=answer.answer_id,
+                    cluster_id=answer.cluster_id,
+                    question=answer.question,
+                    answer_markdown=answer.answer_markdown,
+                    citations=json.loads(answer.citations) if answer.citations else [],
+                    created_by=answer.created_by,
+                    created_at=answer.created_at,
+                    updated_at=answer.updated_at,
+                    is_published=answer.is_published
+                )
+            raise ValueError(f"Canonical answer {answer_id} not found")
+        finally:
+            session.close()
     
     def get_canonical_answer_for_question(self, question: str, artifact: Optional[str], 
                                          section: Optional[str]) -> Optional[CanonicalAnswer]:
         """Check if there's a published canonical answer for this question"""
-        cluster_key = f"{artifact or 'general'}_{section or 'general'}"
-        
-        if cluster_key in self.clusters:
-            cluster = self.clusters[cluster_key]
-            if cluster.canonical_answer_id:
-                answer = self.canonical_answers.get(cluster.canonical_answer_id)
-                if answer and answer.is_published:
-                    return answer
-        return None
+        session = self.db.get_session()
+        try:
+            # Find cluster by artifact and section
+            cluster = session.query(QuestionClusterDB).filter_by(
+                artifact=artifact,
+                section=section
+            ).first()
+            
+            if cluster and cluster.canonical_answer_id:
+                answer = session.query(CanonicalAnswerDB).filter_by(
+                    answer_id=cluster.canonical_answer_id,
+                    is_published=True
+                ).first()
+                
+                if answer:
+                    return CanonicalAnswer(
+                        answer_id=answer.answer_id,
+                        cluster_id=answer.cluster_id,
+                        question=answer.question,
+                        answer_markdown=answer.answer_markdown,
+                        citations=json.loads(answer.citations) if answer.citations else [],
+                        created_by=answer.created_by,
+                        created_at=answer.created_at,
+                        updated_at=answer.updated_at,
+                        is_published=answer.is_published
+                    )
+            return None
+        finally:
+            session.close()
     
     # Unresolved Queue
     def _add_to_unresolved(self, student_id: str, question: str, artifact: Optional[str],
@@ -259,65 +357,72 @@ class ProfessorService:
         Get question clusters using semantic similarity (embeddings)
         Groups questions that are semantically similar, not just keyword-based
         """
-        if not self.embedder or not self.question_logs:
+        if not self.embedder:
             # Fallback to simple clustering
             return self.get_question_clusters(course_id, min_count)
         
-        # Get all questions
-        questions = [log["question"] for log in self.question_logs]
-        
-        if len(questions) < 2:
-            return []
-        
-        # Generate embeddings
-        embeddings = self.embedder.encode(questions)
-        
-        # Calculate similarity matrix
-        similarity_matrix = cosine_similarity(embeddings)
-        
-        # Cluster using similarity threshold
-        clusters_list = []
-        assigned = set()
-        
-        for i in range(len(questions)):
-            if i in assigned:
-                continue
+        session = self.db.get_session()
+        try:
+            # Get all question logs from database
+            question_logs = session.query(QuestionLogDB).all()
             
-            # Find all similar questions
-            similar_indices = []
-            for j in range(len(questions)):
-                if i != j and similarity_matrix[i][j] >= similarity_threshold:
-                    similar_indices.append(j)
+            if len(question_logs) < 2:
+                return []
             
-            if len(similar_indices) >= min_count - 1:  # Including the seed question
-                # Create cluster
-                cluster_questions = [questions[i]] + [questions[j] for j in similar_indices]
-                assigned.add(i)
-                assigned.update(similar_indices)
+            # Get all questions
+            questions = [log.question for log in question_logs]
+            
+            # Generate embeddings
+            embeddings = self.embedder.encode(questions)
+            
+            # Calculate similarity matrix
+            similarity_matrix = cosine_similarity(embeddings)
+            
+            # Cluster using similarity threshold
+            clusters_list = []
+            assigned = set()
+            
+            for i in range(len(questions)):
+                if i in assigned:
+                    continue
                 
-                # Get metadata from logs
-                log_indices = [i] + similar_indices
-                artifacts = [self.question_logs[idx].get("artifact") for idx in log_indices]
-                sections = [self.question_logs[idx].get("section") for idx in log_indices]
+                # Find all similar questions
+                similar_indices = []
+                for j in range(len(questions)):
+                    if i != j and similarity_matrix[i][j] >= similarity_threshold:
+                        similar_indices.append(j)
                 
-                # Most common artifact/section
-                artifact = max(set(filter(None, artifacts)), key=artifacts.count) if artifacts else None
-                section = max(set(filter(None, sections)), key=sections.count) if sections else None
-                
-                cluster = QuestionCluster(
-                    cluster_id=str(uuid.uuid4()),
-                    representative_question=questions[i],  # First question as representative
-                    similar_questions=cluster_questions,
-                    count=len(cluster_questions),
-                    artifact=artifact,
-                    section=section,
-                    canonical_answer_id=None,
-                    created_at=datetime.now(),
-                    last_seen=datetime.now()
-                )
-                clusters_list.append(cluster)
-        
-        return sorted(clusters_list, key=lambda x: x.count, reverse=True)
+                if len(similar_indices) >= min_count - 1:  # Including the seed question
+                    # Create cluster
+                    cluster_questions = [questions[i]] + [questions[j] for j in similar_indices]
+                    assigned.add(i)
+                    assigned.update(similar_indices)
+                    
+                    # Get metadata from logs
+                    log_indices = [i] + similar_indices
+                    artifacts = [question_logs[idx].artifact for idx in log_indices]
+                    sections = [question_logs[idx].section for idx in log_indices]
+                    
+                    # Most common artifact/section
+                    artifact = max(set(filter(None, artifacts)), key=artifacts.count) if artifacts else None
+                    section = max(set(filter(None, sections)), key=sections.count) if sections else None
+                    
+                    cluster = QuestionCluster(
+                        cluster_id=str(uuid.uuid4()),
+                        representative_question=questions[i],  # First question as representative
+                        similar_questions=cluster_questions,
+                        count=len(cluster_questions),
+                        artifact=artifact,
+                        section=section,
+                        canonical_answer_id=None,
+                        created_at=datetime.now(),
+                        last_seen=datetime.now()
+                    )
+                    clusters_list.append(cluster)
+            
+            return sorted(clusters_list, key=lambda x: x.count, reverse=True)
+        finally:
+            session.close()
     
     def suggest_cluster_name(self, cluster: QuestionCluster) -> str:
         """
@@ -342,48 +447,84 @@ class ProfessorService:
         Check if a student question matches any canonical answer
         Returns the canonical answer if found, None otherwise
         """
-        if not self.embedder or not self.canonical_answers:
+        if not self.embedder:
             return None
         
-        # Get published canonical answers
-        published_answers = [
-            answer for answer in self.canonical_answers.values()
-            if answer.published
-        ]
-        
-        if not published_answers:
+        session = self.db.get_session()
+        try:
+            # Get published canonical answers from database
+            published_answers_db = session.query(CanonicalAnswerDB).filter_by(
+                is_published=True
+            ).all()
+            
+            if not published_answers_db:
+                return None
+            
+            # Generate embedding for the question
+            question_embedding = self.embedder.encode([question])
+            
+            # Check each canonical answer's cluster
+            for answer_db in published_answers_db:
+                # Find the cluster this answer belongs to
+                cluster = session.query(QuestionClusterDB).filter_by(
+                    canonical_answer_id=answer_db.answer_id
+                ).first()
+                
+                if not cluster:
+                    continue
+                
+                cluster_questions = json.loads(cluster.similar_questions)
+                
+                if not cluster_questions:
+                    continue
+                
+                # Generate embeddings for cluster questions
+                cluster_embeddings = self.embedder.encode(cluster_questions)
+                
+                # Calculate similarity
+                similarities = cosine_similarity(question_embedding, cluster_embeddings)[0]
+                max_similarity = max(similarities)
+                
+                if max_similarity >= similarity_threshold:
+                    # Return Pydantic model
+                    return CanonicalAnswer(
+                        answer_id=answer_db.answer_id,
+                        cluster_id=answer_db.cluster_id,
+                        question=answer_db.question,
+                        answer_markdown=answer_db.answer_markdown,
+                        citations=json.loads(answer_db.citations) if answer_db.citations else [],
+                        created_by=answer_db.created_by,
+                        created_at=answer_db.created_at,
+                        updated_at=answer_db.updated_at,
+                        is_published=answer_db.is_published
+                    )
+            
             return None
-        
-        # Generate embedding for the question
-        question_embedding = self.embedder.encode([question])
-        
-        # Check each canonical answer's cluster
-        for answer in published_answers:
-            # Find the cluster this answer belongs to
-            cluster_questions = []
-            for cluster in self.clusters.values():
-                if cluster.canonical_answer_id == answer.answer_id:
-                    cluster_questions = cluster.similar_questions
-                    break
-            
-            if not cluster_questions:
-                continue
-            
-            # Generate embeddings for cluster questions
-            cluster_embeddings = self.embedder.encode(cluster_questions)
-            
-            # Calculate similarity
-            similarities = cosine_similarity(question_embedding, cluster_embeddings)[0]
-            max_similarity = max(similarities)
-            
-            if max_similarity >= similarity_threshold:
-                return answer
-        
-        return None
+        finally:
+            session.close()
     
     def get_all_published_canonical_answers(self) -> List[CanonicalAnswer]:
         """Get all published canonical answers for FAQ page"""
-        return [
-            answer for answer in self.canonical_answers.values()
-            if answer.published
-        ]
+        session = self.db.get_session()
+        try:
+            answers_db = session.query(CanonicalAnswerDB).filter_by(
+                is_published=True
+            ).all()
+            
+            # Convert to Pydantic models
+            answers = []
+            for a in answers_db:
+                answers.append(CanonicalAnswer(
+                    answer_id=a.answer_id,
+                    cluster_id=a.cluster_id,
+                    question=a.question,
+                    answer_markdown=a.answer_markdown,
+                    citations=json.loads(a.citations) if a.citations else [],
+                    created_by=a.created_by,
+                    created_at=a.created_at,
+                    updated_at=a.updated_at,
+                    is_published=a.is_published
+                ))
+            return answers
+        finally:
+            session.close()

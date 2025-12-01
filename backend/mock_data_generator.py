@@ -102,10 +102,17 @@ class MockDataGenerator:
         for i in range(num_questions):
             self._generate_random_question(days_ago=random.randint(0, 7))
         
-        print(f"✅ Generated {num_questions} questions")
-        print(f"   Clusters: {len(self.service.clusters)}")
-        print(f"   Unresolved: {len([item for item in self.service.unresolved_queue.values() if not item.resolved])}")
-        print(f"   Confusion signals: {len(self.service.confusion_signals)}")
+        # Get cluster count from database
+        session = self.service.db.get_session()
+        try:
+            from database import QuestionClusterDB
+            cluster_count = session.query(QuestionClusterDB).count()
+            print(f"✅ Generated {num_questions} questions")
+            print(f"   Clusters: {cluster_count}")
+            print(f"   Unresolved: {len([item for item in self.service.unresolved_queue.values() if not item.resolved])}")
+            print(f"   Confusion signals: {len(self.service.confusion_signals)}")
+        finally:
+            session.close()
     
     def _generate_random_question(self, days_ago: int = 0):
         """Generate a single random question"""
@@ -183,27 +190,35 @@ class MockDataGenerator:
         """Identify content gaps from generated data"""
         gaps = []
         
-        # Analyze low-confidence questions
-        low_conf_by_topic = {}
-        for log in self.service.question_logs:
-            if log["confidence"] < 0.6:
-                topic = log.get("section", "Unknown")
-                if topic not in low_conf_by_topic:
-                    low_conf_by_topic[topic] = []
-                low_conf_by_topic[topic].append(log["question"])
-        
-        # Create gap reports
-        for topic, questions in low_conf_by_topic.items():
-            if len(questions) >= 3:  # At least 3 low-confidence questions
-                gaps.append({
-                    "topic": topic,
-                    "question_count": len(questions),
-                    "example_questions": questions[:3],
-                    "suggested_action": f"Consider adding more material about {topic}",
-                    "priority": "high" if len(questions) > 5 else "medium"
-                })
-        
-        return sorted(gaps, key=lambda x: x["question_count"], reverse=True)
+        # Get question logs from database
+        session = self.service.db.get_session()
+        try:
+            from database import QuestionLogDB
+            question_logs = session.query(QuestionLogDB).all()
+            
+            # Analyze low-confidence questions
+            low_conf_by_topic = {}
+            for log in question_logs:
+                if log.confidence < 0.6:
+                    topic = log.section or "Unknown"
+                    if topic not in low_conf_by_topic:
+                        low_conf_by_topic[topic] = []
+                    low_conf_by_topic[topic].append(log.question)
+            
+            # Create gap reports
+            for topic, questions in low_conf_by_topic.items():
+                if len(questions) >= 3:  # At least 3 low-confidence questions
+                    gaps.append({
+                        "topic": topic,
+                        "question_count": len(questions),
+                        "example_questions": questions[:3],
+                        "suggested_action": f"Consider adding more material about {topic}",
+                        "priority": "high" if len(questions) > 5 else "medium"
+                    })
+            
+            return sorted(gaps, key=lambda x: x["question_count"], reverse=True)
+        finally:
+            session.close()
     
     def generate_canonical_answers(self):
         """Generate canonical answers for some clusters to demo answered state"""
@@ -322,8 +337,8 @@ valgrind --leak-check=full ./myprogram
 - Plan around midterms and other courses"""
         }
         
-        # Get all clusters and answer about half of them
-        all_clusters = list(self.service.clusters.values())
+        # Get all clusters from database and answer about half of them
+        all_clusters = self.service.get_question_clusters("cs50", min_count=1)
         # Sort by count to answer the most popular ones
         all_clusters.sort(key=lambda x: x.count, reverse=True)
         

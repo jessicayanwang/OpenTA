@@ -206,6 +206,22 @@ async def startup_event():
     print(f"   - Reminder Service (email {'enabled' if reminder_service.email_enabled else 'disabled'})")
     print(f"   ✨ Questions generated adaptively based on student context")
     
+    # Seed demo data on startup
+    print("\n🎲 Seeding demo data...")
+    from mock_data_generator import seed_demo_data
+    from database import db_manager
+    db_manager.reset_demo_data()
+    generator = seed_demo_data(professor_service)
+    session = db_manager.get_session()
+    try:
+        from database import QuestionClusterDB, CanonicalAnswerDB, QuestionLogDB
+        cluster_count = session.query(QuestionClusterDB).count()
+        answer_count = session.query(CanonicalAnswerDB).count()
+        log_count = session.query(QuestionLogDB).count()
+        print(f"✅ Demo data seeded: {log_count} questions, {cluster_count} clusters, {answer_count} answers")
+    finally:
+        session.close()
+    
     print("\n✅ Multi-Agent System Ready!")
     print(f"   Registered agents: {len(orchestrator.agents)}")
     for agent_id, agent in orchestrator.agents.items():
@@ -502,18 +518,34 @@ async def get_content_gaps(course_id: str = "cs50"):
 async def seed_demo_data():
     """Seed system with demo data"""
     from mock_data_generator import seed_demo_data
+    from database import db_manager
     
+    # Clear existing data
+    db_manager.reset_demo_data()
+    
+    # Generate new demo data
     generator = seed_demo_data(professor_service)
     
-    return {
-        "success": True,
-        "message": "Demo data generated",
-        "stats": {
-            "questions": len(professor_service.question_logs),
-            "clusters": len(professor_service.clusters),
-            "students": len(generator.get_student_personas())
+    # Get counts from database
+    session = db_manager.get_session()
+    try:
+        from database import QuestionClusterDB, CanonicalAnswerDB, QuestionLogDB
+        cluster_count = session.query(QuestionClusterDB).count()
+        answer_count = session.query(CanonicalAnswerDB).count()
+        log_count = session.query(QuestionLogDB).count()
+        
+        return {
+            "success": True,
+            "message": "Demo data generated",
+            "stats": {
+                "questions": log_count,
+                "clusters": cluster_count,
+                "answers": answer_count,
+                "students": len(generator.get_student_personas())
+            }
         }
-    }
+    finally:
+        session.close()
 
 @app.get("/api/professor/clusters", response_model=List[QuestionCluster])
 async def get_question_clusters(course_id: str = "cs50", min_count: int = 2, semantic: bool = True):

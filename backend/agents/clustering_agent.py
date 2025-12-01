@@ -65,15 +65,22 @@ class ClusteringAgent(BaseAgent):
         clusters = self.professor_service.get_question_clusters(course_id, min_count)
         
         # Enrich clusters with canonical answer text if available
-        enriched_clusters = []
-        for c in clusters:
-            cluster_dict = c.dict()
-            if c.canonical_answer_id:
-                canonical = self.professor_service.canonical_answers.get(c.canonical_answer_id)
-                if canonical:
-                    cluster_dict['canonical_answer'] = canonical.answer_markdown
-                    cluster_dict['last_updated'] = canonical.updated_at.strftime('%Y-%m-%d')
-            enriched_clusters.append(cluster_dict)
+        from database import CanonicalAnswerDB
+        session = self.professor_service.db.get_session()
+        try:
+            enriched_clusters = []
+            for c in clusters:
+                cluster_dict = c.dict()
+                if c.canonical_answer_id:
+                    canonical = session.query(CanonicalAnswerDB).filter_by(
+                        answer_id=c.canonical_answer_id
+                    ).first()
+                    if canonical:
+                        cluster_dict['canonical_answer'] = canonical.answer_markdown
+                        cluster_dict['last_updated'] = canonical.updated_at.strftime('%Y-%m-%d')
+                enriched_clusters.append(cluster_dict)
+        finally:
+            session.close()
         
         return self.create_response(
             success=True,
@@ -97,15 +104,22 @@ class ClusteringAgent(BaseAgent):
         )
         
         # Enrich clusters with canonical answer text if available
-        enriched_clusters = []
-        for c in clusters:
-            cluster_dict = c.dict()
-            if c.canonical_answer_id:
-                canonical = self.professor_service.canonical_answers.get(c.canonical_answer_id)
-                if canonical:
-                    cluster_dict['canonical_answer'] = canonical.answer_markdown
-                    cluster_dict['last_updated'] = canonical.updated_at.strftime('%Y-%m-%d')
-            enriched_clusters.append(cluster_dict)
+        from database import CanonicalAnswerDB
+        session = self.professor_service.db.get_session()
+        try:
+            enriched_clusters = []
+            for c in clusters:
+                cluster_dict = c.dict()
+                if c.canonical_answer_id:
+                    canonical = session.query(CanonicalAnswerDB).filter_by(
+                        answer_id=c.canonical_answer_id
+                    ).first()
+                    if canonical:
+                        cluster_dict['canonical_answer'] = canonical.answer_markdown
+                        cluster_dict['last_updated'] = canonical.updated_at.strftime('%Y-%m-%d')
+                enriched_clusters.append(cluster_dict)
+        finally:
+            session.close()
         
         return self.create_response(
             success=True,

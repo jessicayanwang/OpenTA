@@ -337,13 +337,15 @@ valgrind --leak-check=full ./myprogram
 - Plan around midterms and other courses"""
         }
         
-        # Get all clusters from database and answer about half of them
-        all_clusters = self.service.get_question_clusters("cs50", min_count=1)
+        # Get all clusters from database and answer about 40% of them
+        # Use min_count=2 to match what frontend displays
+        all_clusters = self.service.get_question_clusters("cs50", min_count=2)
         # Sort by count to answer the most popular ones
         all_clusters.sort(key=lambda x: x.count, reverse=True)
         
-        # Answer top 50% of clusters
-        clusters_to_answer = all_clusters[:len(all_clusters)//2 + 1]
+        # Answer only top 40% of clusters to ensure we have unanswered ones for testing
+        num_to_answer = max(1, int(len(all_clusters) * 0.4))
+        clusters_to_answer = all_clusters[:num_to_answer]
         
         print(f"📝 Creating canonical answers for {len(clusters_to_answer)} clusters...")
         

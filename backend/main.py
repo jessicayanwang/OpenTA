@@ -208,10 +208,12 @@ async def startup_event():
     
     # Seed demo data on startup
     print("\n🎲 Seeding demo data...")
-    from mock_data_generator import seed_demo_data
+    from mock_data_generator import MockDataGenerator
     from database import db_manager
     db_manager.reset_demo_data()
-    generator = seed_demo_data(professor_service)
+    generator = MockDataGenerator(professor_service)
+    generator.generate_demo_data(num_questions=80)  # More questions = more clusters
+    generator.generate_canonical_answers()
     session = db_manager.get_session()
     try:
         from database import QuestionClusterDB, CanonicalAnswerDB, QuestionLogDB

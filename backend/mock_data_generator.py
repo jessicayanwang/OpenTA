@@ -210,4 +210,98 @@ def seed_demo_data(professor_service: ProfessorService):
     """Seed the system with demo data"""
     generator = MockDataGenerator(professor_service)
     generator.generate_demo_data(num_questions=50)
+    
+    # Create demo clusters with published canonical answers
+    from models import CreateCanonicalAnswerRequest, Citation
+    import uuid
+    from datetime import datetime
+    
+    demo_clusters_with_answers = [
+        {
+            "cluster_id": "answered_1",
+            "representative_question": "How do I allocate memory with malloc?",
+            "count": 42,
+            "artifact": "Pointers",
+            "section": "Week 3",
+            "answer": "Memory allocation in C uses malloc() to dynamically allocate memory on the heap. You need to include <stdlib.h> and remember to free the memory when done to avoid memory leaks.",
+            "similar_questions": [
+                "What is malloc used for?",
+                "How to allocate memory in C?",
+                "Difference between malloc and calloc?",
+                "Why do I need to free memory?",
+                "How much memory does malloc allocate?"
+            ]
+        },
+        {
+            "cluster_id": "answered_2",
+            "representative_question": "What is the difference between arrays and pointers?",
+            "count": 28,
+            "artifact": "Pointers",
+            "section": "Week 3",
+            "answer": "Arrays and pointers are closely related in C. An array name is essentially a pointer to the first element. However, arrays have fixed size and pointers can be reassigned.",
+            "similar_questions": [
+                "Are arrays and pointers the same?",
+                "Can I use array notation with pointers?",
+                "Why does array[i] equal *(array + i)?",
+                "Can I reassign an array name?",
+                "What is pointer arithmetic?"
+            ]
+        },
+        {
+            "cluster_id": "answered_3",
+            "representative_question": "How do I debug segmentation faults?",
+            "count": 35,
+            "artifact": "Debugging",
+            "section": "Week 4",
+            "answer": "Segmentation faults occur when you access memory you shouldn't. Use valgrind to detect memory errors, check array bounds, ensure pointers are initialized, and verify malloc succeeded.",
+            "similar_questions": [
+                "What causes segfaults?",
+                "How to fix segmentation fault?",
+                "Why does my program crash with segfault?",
+                "How to use valgrind?",
+                "What is a null pointer dereference?"
+            ]
+        }
+    ]
+    
+    # Create clusters and canonical answers (only if they don't already exist)
+    for demo_cluster in demo_clusters_with_answers:
+        cluster_id = demo_cluster["cluster_id"]
+        
+        # Skip if cluster already exists
+        if cluster_id in professor_service.clusters:
+            # Check if it already has a published answer
+            existing_cluster = professor_service.clusters[cluster_id]
+            if existing_cluster.canonical_answer_id:
+                existing_answer = professor_service.canonical_answers.get(existing_cluster.canonical_answer_id)
+                if existing_answer and existing_answer.is_published:
+                    continue  # Already seeded, skip
+        
+        # Create cluster
+        from models import QuestionCluster
+        cluster = QuestionCluster(
+            cluster_id=cluster_id,
+            representative_question=demo_cluster["representative_question"],
+            similar_questions=demo_cluster["similar_questions"],
+            count=demo_cluster["count"],
+            artifact=demo_cluster["artifact"],
+            section=demo_cluster["section"],
+            canonical_answer_id=None,  # Will be set after creating answer
+            created_at=datetime.now(),
+            last_seen=datetime.now()
+        )
+        professor_service.clusters[cluster_id] = cluster
+        
+        # Create canonical answer
+        request = CreateCanonicalAnswerRequest(
+            cluster_id=cluster_id,
+            question=demo_cluster["representative_question"],
+            answer_markdown=demo_cluster["answer"],
+            citations=[]
+        )
+        canonical = professor_service.create_canonical_answer(request, "prof1")
+        
+        # Publish the answer
+        professor_service.publish_canonical_answer(canonical.answer_id)
+    
     return generator

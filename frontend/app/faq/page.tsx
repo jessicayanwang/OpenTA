@@ -27,29 +27,7 @@ export default function FAQPage() {
       const res = await fetch('http://localhost:8000/api/faq?course_id=cs50')
       const data = await res.json()
       
-      // Add mock FAQ items from professor's answered clusters
-      const mockFAQs: FAQItem[] = [
-        {
-          question: 'How do I allocate memory with malloc?',
-          answer: 'Memory allocation in C uses malloc() to dynamically allocate memory on the heap. You need to include <stdlib.h> and remember to free the memory when done to avoid memory leaks.',
-          created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-          created_by: 'Professor'
-        },
-        {
-          question: 'What is the difference between arrays and pointers?',
-          answer: 'Arrays and pointers are closely related in C. An array name is essentially a pointer to the first element. However, arrays have fixed size and pointers can be reassigned.',
-          created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-          created_by: 'Professor'
-        },
-        {
-          question: 'How do I debug segmentation faults?',
-          answer: 'Segmentation faults occur when you access memory you shouldn\'t. Use valgrind to detect memory errors, check array bounds, ensure pointers are initialized, and verify malloc succeeded.',
-          created_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-          created_by: 'Professor'
-        }
-      ]
-      
-      setFaqItems([...mockFAQs, ...(data.faq || [])])
+      setFaqItems(data.faq || [])
     } catch (error) {
       console.error('Error loading FAQ:', error)
     } finally {

@@ -118,6 +118,20 @@ async def startup_event():
     
     # Initialize professor service with embedder for semantic clustering
     professor_service = ProfessorService(embedder=retriever.embedder)
+    
+    # Seed demo data once at startup
+    print("\n🎲 Seeding demo data...")
+    from mock_data_generator import seed_demo_data
+    try:
+        generator = seed_demo_data(professor_service)
+        print(f"✅ Demo data seeded:")
+        print(f"   - {len(professor_service.question_logs)} questions")
+        print(f"   - {len(professor_service.clusters)} clusters")
+        print(f"   - {len(professor_service.canonical_answers)} canonical answers")
+        print(f"   - {sum(1 for a in professor_service.canonical_answers.values() if a.is_published)} published answers")
+    except Exception as e:
+        print(f"⚠️  Error seeding demo data: {str(e)}")
+    
     # Initialize study plan agent (also reused for diagnostics follow-ups)
     study_plan_agent = StudyPlanAgent()
     # diagnostic_data_path = data_dir / "cs50_initial_diagnostic.json"
@@ -248,7 +262,7 @@ async def chat(request: ChatRequest, student_id: str = "student1"):
         print(f"✅ Found canonical answer (professor-verified)")
         # Return the canonical answer with high confidence
         return ChatResponse(
-            answer=f"**[Professor-Verified Answer]**\n\n{canonical_answer.answer_text}",
+            answer=f"**[Professor-Verified Answer]**\n\n{canonical_answer.answer_markdown}",
             citations=canonical_answer.citations,
             confidence=0.95,  # High confidence for professor-created answers
             suggested_questions=[]
@@ -373,19 +387,27 @@ async def get_faq(course_id: str = "cs50"):
     """Get all published canonical answers for FAQ page"""
     answers = professor_service.get_all_published_canonical_answers()
     
-    # Format for frontend
+    # Format for frontend - use a set to avoid duplicates
+    seen_cluster_ids = set()
     faq_items = []
+    
     for answer in answers:
+        # Skip if we've already processed this cluster
+        if answer.cluster_id in seen_cluster_ids:
+            continue
+        seen_cluster_ids.add(answer.cluster_id)
+        
         # Find the cluster to get representative question
-        representative_question = "General Question"
-        for cluster in professor_service.clusters.values():
-            if cluster.canonical_answer_id == answer.answer_id:
-                representative_question = cluster.representative_question
-                break
+        cluster = professor_service.clusters.get(answer.cluster_id)
+        if cluster:
+            representative_question = cluster.representative_question
+        else:
+            # Fallback to answer.question if cluster not found
+            representative_question = answer.question
         
         faq_items.append({
             "question": representative_question,
-            "answer": answer.answer_text,
+            "answer": answer.answer_markdown,
             "created_at": answer.created_at.isoformat(),
             "created_by": answer.created_by
         })
@@ -515,7 +537,7 @@ async def seed_demo_data():
         }
     }
 
-@app.get("/api/professor/clusters", response_model=List[QuestionCluster])
+@app.get("/api/professor/clusters")
 async def get_question_clusters(course_id: str = "cs50", min_count: int = 2, semantic: bool = True):
     """Get question clusters for professor review using agentic architecture"""
     response = await professor_orchestrator.get_question_clusters(course_id, min_count, semantic)
@@ -523,8 +545,44 @@ async def get_question_clusters(course_id: str = "cs50", min_count: int = 2, sem
     if not response.success:
         raise HTTPException(status_code=500, detail=response.error)
     
-    # Return clusters as list for response_model
-    return response.data.get('clusters', [])
+    # Enrich clusters with canonical answer text
+    clusters = response.data.get('clusters', [])
+    enriched_clusters = []
+    seen_cluster_ids = set()
+    
+    for cluster in clusters:
+        cluster_dict = cluster if isinstance(cluster, dict) else cluster.dict()
+        cluster_id = cluster_dict.get('cluster_id')
+        
+        # Skip duplicates
+        if cluster_id in seen_cluster_ids:
+            continue
+        seen_cluster_ids.add(cluster_id)
+        
+        # If cluster has a canonical answer, include the answer text
+        if cluster_dict.get('canonical_answer_id'):
+            answer_id = cluster_dict['canonical_answer_id']
+            canonical_answer = professor_service.canonical_answers.get(answer_id)
+            if canonical_answer:
+                cluster_dict['canonical_answer'] = canonical_answer.answer_markdown
+                # Format last_updated
+                if canonical_answer.updated_at:
+                    from datetime import datetime
+                    now = datetime.now()
+                    diff = now - canonical_answer.updated_at
+                    if diff.days == 0:
+                        cluster_dict['last_updated'] = 'Today'
+                    elif diff.days == 1:
+                        cluster_dict['last_updated'] = '1 day ago'
+                    else:
+                        cluster_dict['last_updated'] = f'{diff.days} days ago'
+        
+        enriched_clusters.append(cluster_dict)
+    
+    # Note: The safety check was removed because get_semantic_clusters now ensures
+    # all clusters with canonical answers are included. Adding them here would create duplicates.
+    
+    return enriched_clusters
 
 @app.post("/api/professor/canonical-answer", response_model=CanonicalAnswer)
 async def create_canonical_answer(request: CreateCanonicalAnswerRequest, professor_id: str = "prof1"):

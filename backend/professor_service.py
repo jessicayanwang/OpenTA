@@ -100,11 +100,40 @@ class ProfessorService:
         
         self.canonical_answers[answer_id] = canonical
         
-        # Link to cluster
-        for cluster in self.clusters.values():
-            if cluster.cluster_id == request.cluster_id:
-                cluster.canonical_answer_id = answer_id
-                break
+        # Link to cluster - check if cluster exists
+        cluster = self.clusters.get(request.cluster_id)
+        if cluster:
+            cluster.canonical_answer_id = answer_id
+            print(f"✅ Linked answer {answer_id} to existing cluster {request.cluster_id}")
+        else:
+            # Cluster doesn't exist - try to find by representative question
+            matching_cluster = None
+            for c in self.clusters.values():
+                if c.representative_question == request.question:
+                    matching_cluster = c
+                    break
+            
+            if matching_cluster:
+                # Found a matching cluster by question, use it
+                matching_cluster.canonical_answer_id = answer_id
+                print(f"✅ Linked answer {answer_id} to matching cluster {matching_cluster.cluster_id} by question")
+            else:
+                # Cluster doesn't exist - create a minimal one
+                # This can occur if the cluster was generated on-the-fly and not stored
+                from models import QuestionCluster
+                cluster = QuestionCluster(
+                    cluster_id=request.cluster_id,
+                    representative_question=request.question,
+                    similar_questions=[request.question],
+                    count=1,
+                    artifact=None,
+                    section=None,
+                    canonical_answer_id=answer_id,
+                    created_at=now,
+                    last_seen=now
+                )
+                self.clusters[request.cluster_id] = cluster
+                print(f"✅ Created new cluster {request.cluster_id} with answer {answer_id}")
         
         return canonical
     
@@ -258,16 +287,24 @@ class ProfessorService:
         """
         Get question clusters using semantic similarity (embeddings)
         Groups questions that are semantically similar, not just keyword-based
+        Also includes manually created clusters (e.g., from seeding)
         """
+        # Start with existing clusters (includes seeded ones)
+        existing_clusters = list(self.clusters.values())
+        existing_cluster_ids = {c.cluster_id for c in existing_clusters}
+        
         if not self.embedder or not self.question_logs:
-            # Fallback to simple clustering
-            return self.get_question_clusters(course_id, min_count)
+            # Fallback to simple clustering - return existing clusters
+            return sorted([c for c in existing_clusters if c.count >= min_count], 
+                         key=lambda x: x.count, reverse=True)
         
         # Get all questions
         questions = [log["question"] for log in self.question_logs]
         
         if len(questions) < 2:
-            return []
+            # Return existing clusters only
+            return sorted([c for c in existing_clusters if c.count >= min_count], 
+                         key=lambda x: x.count, reverse=True)
         
         # Generate embeddings
         embeddings = self.embedder.encode(questions)
@@ -304,20 +341,110 @@ class ProfessorService:
                 artifact = max(set(filter(None, artifacts)), key=artifacts.count) if artifacts else None
                 section = max(set(filter(None, sections)), key=sections.count) if sections else None
                 
-                cluster = QuestionCluster(
-                    cluster_id=str(uuid.uuid4()),
-                    representative_question=questions[i],  # First question as representative
-                    similar_questions=cluster_questions,
-                    count=len(cluster_questions),
-                    artifact=artifact,
-                    section=section,
-                    canonical_answer_id=None,
-                    created_at=datetime.now(),
-                    last_seen=datetime.now()
-                )
-                clusters_list.append(cluster)
+                # Check if we already have a stored cluster for this representative question
+                # Priority: clusters with canonical answers should be preserved
+                existing_cluster = None
+                for stored_cluster in existing_clusters:
+                    # Match by question - prioritize clusters that already have answers
+                    if (stored_cluster.representative_question == questions[i] or 
+                        questions[i] in stored_cluster.similar_questions):
+                        # If we find a cluster with an answer, use it (don't overwrite)
+                        if stored_cluster.canonical_answer_id:
+                            existing_cluster = stored_cluster
+                            # Still update metadata but preserve the answer
+                            existing_cluster.similar_questions = list(set(existing_cluster.similar_questions + cluster_questions))
+                            existing_cluster.count = len(existing_cluster.similar_questions)
+                            existing_cluster.last_seen = datetime.now()
+                            if artifact and not existing_cluster.artifact:
+                                existing_cluster.artifact = artifact
+                            if section and not existing_cluster.section:
+                                existing_cluster.section = section
+                            existing_cluster_ids.add(existing_cluster.cluster_id)
+                            break
+                        # If no answer yet, we can update this cluster
+                        elif not existing_cluster:
+                            existing_cluster = stored_cluster
+                            # Update the existing cluster with latest info
+                            existing_cluster.similar_questions = list(set(existing_cluster.similar_questions + cluster_questions))
+                            existing_cluster.count = len(existing_cluster.similar_questions)
+                            existing_cluster.last_seen = datetime.now()
+                            if artifact and not existing_cluster.artifact:
+                                existing_cluster.artifact = artifact
+                            if section and not existing_cluster.section:
+                                existing_cluster.section = section
+                            existing_cluster_ids.add(existing_cluster.cluster_id)
+                
+                if not existing_cluster:
+                    # Create new cluster and store it
+                    cluster = QuestionCluster(
+                        cluster_id=str(uuid.uuid4()),
+                        representative_question=questions[i],  # First question as representative
+                        similar_questions=cluster_questions,
+                        count=len(cluster_questions),
+                        artifact=artifact,
+                        section=section,
+                        canonical_answer_id=None,
+                        created_at=datetime.now(),
+                        last_seen=datetime.now()
+                    )
+                    # Store the cluster so it persists
+                    self.clusters[cluster.cluster_id] = cluster
+                    clusters_list.append(cluster)
         
-        return sorted(clusters_list, key=lambda x: x.count, reverse=True)
+        # Combine existing clusters with newly generated ones
+        # Important: Always include ALL stored clusters that have canonical answers,
+        # even if they don't match current question_logs (they might have been answered manually)
+        all_clusters = []
+        seen_ids = set()
+        seen_questions = set()  # Track by question to avoid duplicates
+        
+        # First, add ALL existing stored clusters (especially those with answers)
+        # This ensures answered clusters always appear, even if they don't match current questions
+        for cluster in self.clusters.values():
+            if cluster.cluster_id not in seen_ids:
+                # Include clusters that meet min_count OR have a canonical answer
+                if cluster.count >= min_count or cluster.canonical_answer_id:
+                    seen_ids.add(cluster.cluster_id)
+                    seen_questions.add(cluster.representative_question)
+                    all_clusters.append(cluster)
+        
+        # Add newly generated clusters that weren't already stored
+        # But first, check if any of them match existing clusters by question and merge
+        for new_cluster in clusters_list:
+            if new_cluster.cluster_id not in seen_ids:
+                # Check if there's an existing stored cluster with the same representative question
+                # Always prefer the stored version (which may have a canonical answer)
+                matching_existing = None
+                for existing_cluster in self.clusters.values():
+                    if existing_cluster.representative_question == new_cluster.representative_question:
+                        matching_existing = existing_cluster
+                        # Update the existing cluster's count and questions
+                        matching_existing.similar_questions = list(set(matching_existing.similar_questions + new_cluster.similar_questions))
+                        matching_existing.count = len(matching_existing.similar_questions)
+                        matching_existing.last_seen = datetime.now()
+                        # Preserve artifact/section if new cluster has them
+                        if new_cluster.artifact and not matching_existing.artifact:
+                            matching_existing.artifact = new_cluster.artifact
+                        if new_cluster.section and not matching_existing.section:
+                            matching_existing.section = new_cluster.section
+                        break
+                
+                if matching_existing:
+                    # Use the stored cluster (which may have a canonical answer)
+                    # Only add if not already in the list
+                    if matching_existing.cluster_id not in seen_ids:
+                        seen_ids.add(matching_existing.cluster_id)
+                        seen_questions.add(matching_existing.representative_question)
+                        all_clusters.append(matching_existing)
+                    # Don't add the new_cluster since we're using the matching_existing
+                elif new_cluster.count >= min_count and new_cluster.representative_question not in seen_questions:
+                    # New cluster with unique question, store it and add it
+                    self.clusters[new_cluster.cluster_id] = new_cluster
+                    seen_ids.add(new_cluster.cluster_id)
+                    seen_questions.add(new_cluster.representative_question)
+                    all_clusters.append(new_cluster)
+        
+        return sorted(all_clusters, key=lambda x: (x.canonical_answer_id is not None, x.count), reverse=True)
     
     def suggest_cluster_name(self, cluster: QuestionCluster) -> str:
         """
@@ -348,7 +475,7 @@ class ProfessorService:
         # Get published canonical answers
         published_answers = [
             answer for answer in self.canonical_answers.values()
-            if answer.published
+            if answer.is_published
         ]
         
         if not published_answers:
@@ -385,5 +512,5 @@ class ProfessorService:
         """Get all published canonical answers for FAQ page"""
         return [
             answer for answer in self.canonical_answers.values()
-            if answer.published
+            if answer.is_published
         ]

@@ -197,7 +197,9 @@ export default function ProfessorConsole() {
         
         setContentGaps([...highPriorityGaps, ...filteredGaps, ...lowPriorityGaps])
       } else if (activeTab === 'clusters') {
-        const res = await fetch('http://localhost:8000/api/professor/clusters?course_id=cs50&semantic=true&min_count=2')
+        // Use semantic=false to get stored database clusters with canonical_answer_id
+        // semantic=true re-clusters on the fly and loses the answer links
+        const res = await fetch('http://localhost:8000/api/professor/clusters?course_id=cs50&semantic=false&min_count=2')
         const data = await res.json()
         
         // Use clusters directly from backend - they have canonical_answer_id field

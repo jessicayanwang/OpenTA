@@ -69,16 +69,24 @@ class ClusteringAgent(BaseAgent):
         session = self.professor_service.db.get_session()
         try:
             enriched_clusters = []
+            answered_count = 0
             for c in clusters:
-                cluster_dict = c.dict()
+                cluster_dict = c.model_dump()
                 if c.canonical_answer_id:
+                    answered_count += 1
+                    print(f"🔍 Enriching cluster {c.cluster_id} with canonical answer {c.canonical_answer_id}")
                     canonical = session.query(CanonicalAnswerDB).filter_by(
                         answer_id=c.canonical_answer_id
                     ).first()
                     if canonical:
                         cluster_dict['canonical_answer'] = canonical.answer_markdown
                         cluster_dict['last_updated'] = canonical.updated_at.strftime('%Y-%m-%d')
+                        print(f"✅ Added canonical answer text to cluster {c.cluster_id}")
+                    else:
+                        print(f"❌ WARNING: Canonical answer {c.canonical_answer_id} not found!")
                 enriched_clusters.append(cluster_dict)
+            
+            print(f"📊 _get_clusters: Returning {len(enriched_clusters)} clusters ({answered_count} answered)")
         finally:
             session.close()
         
@@ -108,16 +116,24 @@ class ClusteringAgent(BaseAgent):
         session = self.professor_service.db.get_session()
         try:
             enriched_clusters = []
+            answered_count = 0
             for c in clusters:
-                cluster_dict = c.dict()
+                cluster_dict = c.model_dump()
                 if c.canonical_answer_id:
+                    answered_count += 1
+                    print(f"🔍 Enriching cluster {c.cluster_id} with canonical answer {c.canonical_answer_id}")
                     canonical = session.query(CanonicalAnswerDB).filter_by(
                         answer_id=c.canonical_answer_id
                     ).first()
                     if canonical:
                         cluster_dict['canonical_answer'] = canonical.answer_markdown
                         cluster_dict['last_updated'] = canonical.updated_at.strftime('%Y-%m-%d')
+                        print(f"✅ Added canonical answer text to cluster {c.cluster_id}")
+                    else:
+                        print(f"❌ WARNING: Canonical answer {c.canonical_answer_id} not found!")
                 enriched_clusters.append(cluster_dict)
+            
+            print(f"📊 _get_semantic_clusters: Returning {len(enriched_clusters)} clusters ({answered_count} answered)")
         finally:
             session.close()
         
